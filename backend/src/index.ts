@@ -4,7 +4,7 @@ import { ChatActions, ChatService, createChatHandlers } from './chat';
 import { RoomActions, RoomService, createRoomHandlers } from './room';
 import { createWSServer } from './ws';
 
-export function startExampleServer(port = 3000) {
+function startExampleServer(port = 3000) {
   const chatService = new ChatService();
   const roomService = new RoomService();
   const chatActions = new ChatActions(chatService);
@@ -33,3 +33,5 @@ export function startExampleServer(port = 3000) {
 
   return { wss, server };
 }
+
+startExampleServer();
