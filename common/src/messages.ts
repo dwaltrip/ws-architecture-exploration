@@ -1,5 +1,5 @@
-import { MessageUnion } from './utils/message-helpers';
-import {
+import type { MessageUnion } from './utils/message-helpers';
+import type {
   ChatClientMessage,
   ChatClientMessageType,
   ChatClientPayloadMap,
@@ -7,7 +7,7 @@ import {
   ChatServerMessageType,
   ChatServerPayloadMap,
 } from './chat';
-import {
+import type {
   RoomClientMessage,
   RoomClientMessageType,
   RoomClientPayloadMap,
@@ -15,7 +15,7 @@ import {
   RoomServerMessageType,
   RoomServerPayloadMap,
 } from './room';
-import {
+import type {
   SystemServerMessage,
   SystemServerMessageType,
   SystemServerPayloadMap,
@@ -41,6 +41,6 @@ export type DomainServerMessage = ChatServerMessage | RoomServerMessage;
 
 export type SystemMessage = SystemServerMessage;
 
-export { ChatClientMessage, ChatServerMessage };
-export { RoomClientMessage, RoomServerMessage };
-export { SystemServerMessage };
+export type { ChatClientMessage, ChatServerMessage };
+export type { RoomClientMessage, RoomServerMessage };
+export type { SystemServerMessage };

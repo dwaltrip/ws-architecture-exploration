@@ -2,6 +2,7 @@ import type { ServerMessage } from '../../../common/src';
 import { chatMessages } from '../chat';
 import { roomMessages } from '../room';
 import { WSClient } from './client';
+import type { ServerMessageHandler } from './client';
 
 export function createExampleClient(url: string) {
   const client = new WSClient(url);
@@ -23,7 +24,7 @@ export function createExampleClient(url: string) {
     client,
     subscribe<TType extends ServerMessage['type']>(
       type: TType,
-      handler: Parameters<WSClient['on']<TType>>[1]
+      handler: ServerMessageHandler<TType>
     ) {
       return client.on(type, handler);
     },

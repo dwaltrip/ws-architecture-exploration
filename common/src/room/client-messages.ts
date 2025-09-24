@@ -1,4 +1,4 @@
-import { MessageUnion } from '../utils/message-helpers';
+import type { MessageUnion } from '../utils/message-helpers';
 
 export type RoomJoinPayload = {
   roomId: string;

@@ -5,7 +5,7 @@ import type {
   ServerMessage,
 } from '../../../common/src';
 
-type ServerMessageHandler<TType extends ServerMessage['type']> = (
+export type ServerMessageHandler<TType extends ServerMessage['type']> = (
   payload: PayloadFor<ServerMessage, TType>
 ) => void;
 
@@ -24,8 +24,13 @@ export class WSClient {
   private socket?: WebSocket;
   private handlers: HandlerRegistry = new Map();
   private reconnectAttempts = 0;
+  private readonly url: string;
+  private readonly options: Partial<WSClientOptions>;
 
-  constructor(private readonly url: string, private readonly options: Partial<WSClientOptions> = {}) {}
+  constructor(url: string, options: Partial<WSClientOptions> = {}) {
+    this.url = url;
+    this.options = options;
+  }
 
   connect() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
