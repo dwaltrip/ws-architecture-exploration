@@ -3,21 +3,18 @@ import { ServerMessages } from './messages';
 import type { DomainHandlers, HandlerContext } from './types';
 import type { ClientMessage } from '../../../common/src';
 import type { ChatClientMessage } from '../../../common/src';
-import type { RoomClientMessage } from '../../../common/src';
-import type { RoomService } from '../room/service';
+import { RoomManager } from './room-manager';
+// import type { RoomClientMessage } from '../../../common/src';
+// import type { RoomService } from '../room/service';
 
 export interface WSDomainMap {
   chat: DomainHandlers<ChatClientMessage>;
-  room: DomainHandlers<RoomClientMessage>;
-}
-
-interface Services {
-  roomService: RoomService;
+  // room: DomainHandlers<RoomClientMessage>;
 }
 
 type GenericHandler = (payload: unknown, ctx: HandlerContext) => void | Promise<void>;
 
-export function createWSServer(domains: WSDomainMap, services: Services) {
+export function createWSServer(domains: WSDomainMap) {
   const handlers = new Map<string, GenericHandler>();
 
   Object.values(domains).forEach((domainHandlers) => {
@@ -27,6 +24,7 @@ export function createWSServer(domains: WSDomainMap, services: Services) {
   });
 
   const clients = new Map<string, WebSocket>();
+  const roomManager = new RoomManager();
 
   return {
     handleConnection(socket: WebSocket, userId: string, username: string) {
@@ -35,12 +33,15 @@ export function createWSServer(domains: WSDomainMap, services: Services) {
       const context: HandlerContext = {
         userId,
         username,
+
         send: (message) => {
           socket.send(JSON.stringify(message));
         },
+
         sendError: (code, message, details) => {
           socket.send(JSON.stringify(ServerMessages.system.error({ code, message, details })));
         },
+
         broadcast: (message, excludeSelf) => {
           const data = JSON.stringify(message);
           for (const [id, ws] of clients.entries()) {
@@ -49,16 +50,24 @@ export function createWSServer(domains: WSDomainMap, services: Services) {
             }
           }
         },
+
         broadcastToRoom: async (roomId, message, excludeSelf) => {
-          const members = await services.roomService.getRoomUsers(roomId);
+          const members = roomManager.getUsersInRoom(roomId);
           const data = JSON.stringify(message);
-          members.forEach((member) => {
-            if (!excludeSelf || member.id !== userId) {
-              clients.get(member.id)?.send(data);
-            }
+          const promises = Array.from(members).map((memberId) => {
+            return (!excludeSelf || memberId !== userId) ?
+              clients.get(memberId)?.send(data) :
+              Promise.resolve();
           });
+          return Promise.all(promises)
+            .then(() => undefined)
+            .catch((err) => {
+              console.error('Broadcast to room failed', err);
+              throw err;
+            });
         },
-        isInRoom: async (roomId) => services.roomService.isUserInRoom(roomId, userId),
+
+        isInRoom: async (roomId) => roomManager.getUsersInRoom(roomId).has(userId),
       };
 
       socket.on('message', async (raw) => {
@@ -83,10 +92,10 @@ export function createWSServer(domains: WSDomainMap, services: Services) {
 
       socket.on('close', async () => {
         clients.delete(userId);
-        const rooms = await services.roomService.getRoomsForUser(userId);
+        const rooms = roomManager.getRoomsForUser(userId);
 
         for (const roomId of rooms) {
-          await services.roomService.removeUserFromRoom(roomId, userId);
+          roomManager.removeUserFromRoom(roomId, userId);
           await context.broadcastToRoom(
             roomId,
             ServerMessages.room.userLeft({ roomId, userId, username }),
