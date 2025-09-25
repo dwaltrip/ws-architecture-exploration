@@ -3,11 +3,6 @@ import {
   chatMessages,
   registerChatHandlers,
 } from '../chat';
-import {
-  RoomClientActions,
-  registerRoomHandlers,
-  roomMessages,
-} from '../room';
 import { WSClient } from './client';
 import type { ServerMessageHandler } from './client';
 
@@ -15,11 +10,9 @@ export function createExampleClient(url: string) {
   const client = new WSClient(url);
   client.connect();
 
-  const roomActions = new RoomClientActions();
-
   const subscriptions = [
     registerChatHandlers(client),
-    registerRoomHandlers(client, roomActions),
+    // registerSomeOtherDomainHandlers(client),
     client.on('error', (payload) => {
       console.error('[error]', payload);
     }),
@@ -33,9 +26,15 @@ export function createExampleClient(url: string) {
     ) {
       return client.on(type, handler);
     },
-    sendJoin(roomId: string) {
-      client.send(roomMessages.join(roomId));
-    },
+    /* ------------------------------------------------------------------------
+      TODO: this used to be done via "room" domain but we are going to make
+      room management more of a built-in part of the ws infra code.
+      It will be handled in a more generic way by the client and server, as
+      "rooms" are a very generic concept used by most realtime apps.
+    -------------------------------------------------------- */
+    // sendJoin(roomId: string) {
+    //   client.send(roomMessages.join(roomId));
+    // },
     sendChat(roomId: string, text: string) {
       client.send(chatMessages.send(text, roomId));
     },
