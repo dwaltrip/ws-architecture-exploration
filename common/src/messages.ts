@@ -8,11 +8,6 @@ import type {
   ChatServerPayloadMap,
 } from './chat';
 import type {
-  SystemServerMessage,
-  SystemServerMessageType,
-  SystemServerPayloadMap,
-} from './system/server-messages';
-import type {
   SystemClientMessage,
   SystemClientMessageType,
   SystemClientPayloadMap,
@@ -23,10 +18,8 @@ export type ClientMessageMap =
   & SystemClientPayloadMap;
 // export type ClientMessageMap = ChatClientPayloadMap & SomeOtherDomainClientPayloadMap;
 
-export type ServerMessageMap =
-  & ChatServerPayloadMap
-  // & SomeOtherDomainServerPayloadMap
-  & SystemServerPayloadMap;
+export type ServerMessageMap = ChatServerPayloadMap;
+// export type ServerMessageMap = ChatServerPayloadMap & SomeOtherDomainServerPayloadMap;
 
 export type ClientMessage = MessageUnion<ClientMessageMap>;
 export type ServerMessage = MessageUnion<ServerMessageMap>;
@@ -36,18 +29,13 @@ export type ClientMessageType =
   | SystemClientMessageType;
 // export type ClientMessageType = ChatClientMessageType | SomeOtherDomainClientMessageType;
 
-export type ServerMessageType =
-  | ChatServerMessageType
-  // | SomeOtherDomainServerMessageType
-  | SystemServerMessageType;
+export type ServerMessageType = ChatServerMessageType;
+// export type ServerMessageType = ChatServerMessageType | SomeOtherDomainServerMessageType;
 
 export type DomainClientMessage = ChatClientMessage;
 // export type DomainClientMessage = ChatClientMessage | SomeotherDomainClientMessage;
 export type DomainServerMessage = ChatServerMessage;
 // export type DomainServerMessage = ChatServerMessage | SomeOtherDomainServerMessage;
 
-export type SystemMessage = SystemServerMessage;
-
 export type { ChatClientMessage, ChatServerMessage };
-export type { SystemServerMessage };
 export type { SystemClientMessage };

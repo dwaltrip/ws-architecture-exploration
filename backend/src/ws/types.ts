@@ -11,7 +11,6 @@ export interface HandlerContext {
     isMember: (roomId: string, userId?: string) => Promise<boolean>;
   };
   send: (message: ServerMessage) => void;
-  sendError: (code: string, message: string, details?: unknown) => void;
   broadcast: (message: ServerMessage, excludeSelf?: boolean) => void;
   broadcastToRoom: (roomId: string, message: ServerMessage, excludeSelf?: boolean) => Promise<void>;
   isInRoom: (roomId: string) => Promise<boolean>;

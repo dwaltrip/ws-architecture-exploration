@@ -4,7 +4,6 @@ import type {
   ChatServerMessage,
   ChatTypingBroadcastPayload,
   ServerMessage,
-  SystemErrorPayload,
 } from '../../../common/src';
 
 export const ServerMessages = {
@@ -25,14 +24,6 @@ export const ServerMessages = {
       payload: ChatTypingBroadcastPayload
     ): Extract<ChatServerMessage, { type: 'chat:typing' }> => ({
       type: 'chat:typing',
-      payload,
-    }),
-  },
-  system: {
-    error: (
-      payload: SystemErrorPayload
-    ): Extract<ServerMessage, { type: 'error' }> => ({
-      type: 'error',
       payload,
     }),
   },

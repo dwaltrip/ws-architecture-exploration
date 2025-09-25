@@ -1,5 +1,4 @@
 import type { WebSocket } from 'ws';
-import { ServerMessages } from './messages';
 import type { DomainHandlers, HandlerContext } from './types';
 import type {
   ClientMessage,
@@ -53,10 +52,6 @@ export function createWSServer(domains: WSDomainMap) {
           socket.send(JSON.stringify(message));
         },
 
-        sendError: (code, message, details) => {
-          socket.send(JSON.stringify(ServerMessages.system.error({ code, message, details })));
-        },
-
         broadcast: (message, excludeSelf) => {
           const data = JSON.stringify(message);
           for (const [id, ws] of clients.entries()) {
@@ -90,24 +85,20 @@ export function createWSServer(domains: WSDomainMap) {
           const message = JSON.parse(raw.toString()) as ClientMessage;
 
           if (isSystemRoomMessage(message)) {
-            handleSystemRoomMessage(message, context);
+            await handleSystemRoomMessage(message, context);
             return;
           }
 
           const handler = handlers.get(message.type);
 
           if (!handler) {
-            context.sendError('UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${String((message as { type?: unknown }).type)}`);
-            return;
+            throw new Error(`Unknown message type: ${String((message as { type?: unknown }).type)}`);
           }
 
           await handler(message.payload, context);
         } catch (error) {
           console.error('Failed to handle message', error);
-          context.sendError(
-            'HANDLER_ERROR',
-            error instanceof Error ? error.message : 'An unexpected error occurred'
-          );
+          throw error;
         }
       });
 
@@ -131,7 +122,7 @@ function isSystemRoomMessage(message: ClientMessage): message is SystemClientMes
   return message.type === 'system:room-join' || message.type === 'system:room-leave';
 }
 
-function handleSystemRoomMessage(
+async function handleSystemRoomMessage(
   message: SystemClientMessage,
   ctx: HandlerContext
 ) {
@@ -140,11 +131,10 @@ function handleSystemRoomMessage(
       const { roomId } = message.payload;
       const normalizedRoomId = normalizeRoomId(roomId);
       if (!normalizedRoomId) {
-        ctx.sendError('ROOM_JOIN_INVALID', 'Room id must be a non-empty string.');
-        return;
+        throw new Error('Room id must be a non-empty string.');
       }
 
-      ctx.rooms.join(normalizedRoomId);
+      await ctx.rooms.join(normalizedRoomId);
       return;
     }
 
@@ -152,20 +142,16 @@ function handleSystemRoomMessage(
       const { roomId } = message.payload;
       const normalizedRoomId = normalizeRoomId(roomId);
       if (!normalizedRoomId) {
-        ctx.sendError('ROOM_LEAVE_INVALID', 'Room id must be a non-empty string.');
-        return;
+        throw new Error('Room id must be a non-empty string.');
       }
 
-      try {
-        ctx.rooms.leave(normalizedRoomId);
-      } catch (error) {
-        ctx.sendError('ROOM_LEAVE_FAILED', error instanceof Error ? error.message : 'Failed to leave room');
-      }
+      await ctx.rooms.leave(normalizedRoomId);
       return;
     }
 
     default:
-      ctx.sendError('ROOM_MESSAGE_UNHANDLED', `Unhandled system room message: ${String((message as { type?: unknown }).type)}`);
+      const info = String((message as { type?: unknown }).type);
+      throw new Error(`Unhandled system room message: ${info}`);
   }
 }
 

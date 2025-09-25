@@ -13,9 +13,6 @@ export function createExampleClient(url: string) {
   const subscriptions = [
     registerChatHandlers(client),
     // registerSomeOtherDomainHandlers(client),
-    client.on('error', (payload) => {
-      console.error('[error]', payload);
-    }),
   ];
 
   return {
