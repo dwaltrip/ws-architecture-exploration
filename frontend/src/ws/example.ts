@@ -1,6 +1,5 @@
 import type { ServerMessage } from '../../../common/src';
 import {
-  ChatClientActions,
   chatMessages,
   registerChatHandlers,
 } from '../chat';
@@ -16,11 +15,10 @@ export function createExampleClient(url: string) {
   const client = new WSClient(url);
   client.connect();
 
-  const chatActions = new ChatClientActions();
   const roomActions = new RoomClientActions();
 
   const subscriptions = [
-    registerChatHandlers(client, chatActions),
+    registerChatHandlers(client),
     registerRoomHandlers(client, roomActions),
     client.on('error', (payload) => {
       console.error('[error]', payload);

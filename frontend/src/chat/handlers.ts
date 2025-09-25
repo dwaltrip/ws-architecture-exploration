@@ -1,11 +1,24 @@
 import type { WSClient } from '../ws';
-import { ChatClientActions } from './actions';
+import {
+  addNewMessage,
+  updateMessageWithEdits,
+  updateIsTypingStatus,
+} from './actions';
 
-export function registerChatHandlers(client: WSClient, actions: ChatClientActions) {
+export function registerChatHandlers(client: WSClient) {
   const unsubscribes = [
-    client.on('chat:message', (payload) => actions.handleMessage(payload)),
-    client.on('chat:edited', (payload) => actions.handleEdited(payload)),
-    client.on('chat:typing', (payload) => actions.handleTyping(payload)),
+    client.on('chat:message', (payload) => {
+      const { text, roomId, userId } = payload;
+      addNewMessage(text, roomId, userId);
+    }),
+    client.on('chat:edited', (payload) => {
+      const { messageId, newText } = payload;
+      updateMessageWithEdits(messageId, newText);
+    }),
+    client.on('chat:typing', (payload) => {
+      const { roomId, userId, isTyping } = payload;
+      updateIsTypingStatus(roomId, userId, isTyping);
+    }),
   ];
 
   return () => {
