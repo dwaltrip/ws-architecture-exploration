@@ -5,16 +5,12 @@ import type {
   ClientMessage,
   ChatClientMessage,
   SystemClientMessage,
-  SystemRoomJoinPayload,
-  SystemRoomLeavePayload,
 } from '../../../common/src';
 import { RoomManager } from './room-manager';
-// import type { RoomClientMessage } from '../../../common/src';
-// import type { RoomService } from '../room/service';
 
 export interface WSDomainMap {
   chat: DomainHandlers<ChatClientMessage>;
-  // room: DomainHandlers<RoomClientMessage>;
+  // otherDomain: DomainHandlers<SomeOtherDomainClientMessage>;
 }
 
 type GenericHandler = (payload: unknown, ctx: HandlerContext) => void | Promise<void>;
@@ -94,7 +90,7 @@ export function createWSServer(domains: WSDomainMap) {
           const message = JSON.parse(raw.toString()) as ClientMessage;
 
           if (isSystemRoomMessage(message)) {
-            await handleSystemRoomMessage(message, context);
+            handleSystemRoomMessage(message, context);
             return;
           }
 
@@ -135,7 +131,7 @@ function isSystemRoomMessage(message: ClientMessage): message is SystemClientMes
   return message.type === 'system:room-join' || message.type === 'system:room-leave';
 }
 
-async function handleSystemRoomMessage(
+function handleSystemRoomMessage(
   message: SystemClientMessage,
   ctx: HandlerContext
 ) {
@@ -148,7 +144,7 @@ async function handleSystemRoomMessage(
         return;
       }
 
-      await ctx.rooms.join(normalizedRoomId);
+      ctx.rooms.join(normalizedRoomId);
       return;
     }
 
@@ -161,7 +157,7 @@ async function handleSystemRoomMessage(
       }
 
       try {
-        await ctx.rooms.leave(normalizedRoomId);
+        ctx.rooms.leave(normalizedRoomId);
       } catch (error) {
         ctx.sendError('ROOM_LEAVE_FAILED', error instanceof Error ? error.message : 'Failed to leave room');
       }
