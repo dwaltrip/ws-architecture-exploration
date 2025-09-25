@@ -26,15 +26,12 @@ export function createExampleClient(url: string) {
     ) {
       return client.on(type, handler);
     },
-    /* ------------------------------------------------------------------------
-      TODO: this used to be done via "room" domain but we are going to make
-      room management more of a built-in part of the ws infra code.
-      It will be handled in a more generic way by the client and server, as
-      "rooms" are a very generic concept used by most realtime apps.
-    -------------------------------------------------------- */
-    // sendJoin(roomId: string) {
-    //   client.send(roomMessages.join(roomId));
-    // },
+    joinRoom(roomId: string) {
+      client.joinRoom(roomId);
+    },
+    leaveRoom(roomId: string) {
+      client.leaveRoom(roomId);
+    },
     sendChat(roomId: string, text: string) {
       client.send(chatMessages.send(text, roomId));
     },

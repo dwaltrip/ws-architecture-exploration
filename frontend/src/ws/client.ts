@@ -54,6 +54,26 @@ export class WSClient {
     this.socket.send(JSON.stringify(message));
   }
 
+  joinRoom(roomId: string) {
+    const normalized = normalizeRoomId(roomId);
+    const message: Extract<ClientMessage, { type: 'system:room-join' }> = {
+      type: 'system:room-join',
+      payload: { roomId: normalized },
+    };
+
+    this.send(message);
+  }
+
+  leaveRoom(roomId: string) {
+    const normalized = normalizeRoomId(roomId);
+    const message: Extract<ClientMessage, { type: 'system:room-leave' }> = {
+      type: 'system:room-leave',
+      payload: { roomId: normalized },
+    };
+
+    this.send(message);
+  }
+
   on<TType extends MessageType<ServerMessage>>(
     type: TType,
     handler: ServerMessageHandler<TType>
@@ -115,4 +135,13 @@ export class WSClient {
       handler(message.payload as never);
     });
   }
+}
+
+function normalizeRoomId(roomId: string) {
+  const trimmed = roomId.trim();
+  if (!trimmed) {
+    throw new Error('Room id must be a non-empty string');
+  }
+
+  return trimmed;
 }

@@ -12,8 +12,15 @@ import type {
   SystemServerMessageType,
   SystemServerPayloadMap,
 } from './system/server-messages';
+import type {
+  SystemClientMessage,
+  SystemClientMessageType,
+  SystemClientPayloadMap,
+} from './system/client-messages';
 
-export type ClientMessageMap = ChatClientPayloadMap;
+export type ClientMessageMap =
+  & ChatClientPayloadMap
+  & SystemClientPayloadMap;
 // export type ClientMessageMap = ChatClientPayloadMap & SomeOtherDomainClientPayloadMap;
 
 export type ServerMessageMap =
@@ -24,7 +31,9 @@ export type ServerMessageMap =
 export type ClientMessage = MessageUnion<ClientMessageMap>;
 export type ServerMessage = MessageUnion<ServerMessageMap>;
 
-export type ClientMessageType = ChatClientMessageType;
+export type ClientMessageType =
+  | ChatClientMessageType
+  | SystemClientMessageType;
 // export type ClientMessageType = ChatClientMessageType | SomeOtherDomainClientMessageType;
 
 export type ServerMessageType =
@@ -41,3 +50,4 @@ export type SystemMessage = SystemServerMessage;
 
 export type { ChatClientMessage, ChatServerMessage };
 export type { SystemServerMessage };
+export type { SystemClientMessage };

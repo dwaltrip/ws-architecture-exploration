@@ -1,8 +1,13 @@
 import type { WebSocket } from 'ws';
 import { ServerMessages } from './messages';
 import type { DomainHandlers, HandlerContext } from './types';
-import type { ClientMessage } from '../../../common/src';
-import type { ChatClientMessage } from '../../../common/src';
+import type {
+  ClientMessage,
+  ChatClientMessage,
+  SystemClientMessage,
+  SystemRoomJoinPayload,
+  SystemRoomLeavePayload,
+} from '../../../common/src';
 import { RoomManager } from './room-manager';
 // import type { RoomClientMessage } from '../../../common/src';
 // import type { RoomService } from '../room/service';
@@ -33,6 +38,20 @@ export function createWSServer(domains: WSDomainMap) {
       const context: HandlerContext = {
         userId,
         username,
+        rooms: {
+          join: async (roomId: string) => {
+            roomManager.join(roomId, userId);
+          },
+          leave: async (roomId: string) => {
+            roomManager.leave(roomId, userId);
+          },
+          getMembers: async (roomId: string) => {
+            return roomManager.getMembers(roomId);
+          },
+          isMember: async (roomId: string, targetUserId = userId) => {
+            return roomManager.isMember(roomId, targetUserId);
+          },
+        },
 
         send: (message) => {
           socket.send(JSON.stringify(message));
@@ -52,7 +71,7 @@ export function createWSServer(domains: WSDomainMap) {
         },
 
         broadcastToRoom: async (roomId, message, excludeSelf) => {
-          const members = roomManager.getUsersInRoom(roomId);
+          const members = roomManager.requireMembers(roomId);
           const data = JSON.stringify(message);
           const promises = Array.from(members).map((memberId) => {
             return (!excludeSelf || memberId !== userId) ?
@@ -67,12 +86,18 @@ export function createWSServer(domains: WSDomainMap) {
             });
         },
 
-        isInRoom: async (roomId) => roomManager.getUsersInRoom(roomId).has(userId),
+        isInRoom: async (roomId) => roomManager.isMember(roomId, userId),
       };
 
       socket.on('message', async (raw) => {
         try {
           const message = JSON.parse(raw.toString()) as ClientMessage;
+
+          if (isSystemRoomMessage(message)) {
+            await handleSystemRoomMessage(message, context);
+            return;
+          }
+
           const handler = handlers.get(message.type);
 
           if (!handler) {
@@ -95,14 +120,64 @@ export function createWSServer(domains: WSDomainMap) {
         const rooms = roomManager.getRoomsForUser(userId);
 
         for (const roomId of rooms) {
-          roomManager.removeUserFromRoom(roomId, userId);
-          await context.broadcastToRoom(
-            roomId,
-            ServerMessages.room.userLeft({ roomId, userId, username }),
-            true
-          );
+          try {
+            roomManager.leave(roomId, userId);
+          } catch (error) {
+            console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
+          }
         }
       });
     },
   };
+}
+
+function isSystemRoomMessage(message: ClientMessage): message is SystemClientMessage {
+  return message.type === 'system:room-join' || message.type === 'system:room-leave';
+}
+
+async function handleSystemRoomMessage(
+  message: SystemClientMessage,
+  ctx: HandlerContext
+) {
+  switch (message.type) {
+    case 'system:room-join': {
+      const { roomId } = message.payload;
+      const normalizedRoomId = normalizeRoomId(roomId);
+      if (!normalizedRoomId) {
+        ctx.sendError('ROOM_JOIN_INVALID', 'Room id must be a non-empty string.');
+        return;
+      }
+
+      await ctx.rooms.join(normalizedRoomId);
+      return;
+    }
+
+    case 'system:room-leave': {
+      const { roomId } = message.payload;
+      const normalizedRoomId = normalizeRoomId(roomId);
+      if (!normalizedRoomId) {
+        ctx.sendError('ROOM_LEAVE_INVALID', 'Room id must be a non-empty string.');
+        return;
+      }
+
+      try {
+        await ctx.rooms.leave(normalizedRoomId);
+      } catch (error) {
+        ctx.sendError('ROOM_LEAVE_FAILED', error instanceof Error ? error.message : 'Failed to leave room');
+      }
+      return;
+    }
+
+    default:
+      ctx.sendError('ROOM_MESSAGE_UNHANDLED', `Unhandled system room message: ${String((message as { type?: unknown }).type)}`);
+  }
+}
+
+function normalizeRoomId(roomId: unknown): string | null {
+  if (typeof roomId !== 'string') {
+    return null;
+  }
+
+  const trimmed = roomId.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }

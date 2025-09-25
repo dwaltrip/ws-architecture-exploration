@@ -4,6 +4,12 @@ import type { MessageType, PayloadFor } from '../../../common/src';
 export interface HandlerContext {
   userId: string;
   username: string;
+  rooms: {
+    join: (roomId: string) => Promise<void>;
+    leave: (roomId: string) => Promise<void>;
+    getMembers: (roomId: string) => Promise<Set<string> | null>;
+    isMember: (roomId: string, userId?: string) => Promise<boolean>;
+  };
   send: (message: ServerMessage) => void;
   sendError: (code: string, message: string, details?: unknown) => void;
   broadcast: (message: ServerMessage, excludeSelf?: boolean) => void;

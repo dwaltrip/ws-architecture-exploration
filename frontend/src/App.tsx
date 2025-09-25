@@ -12,10 +12,11 @@ function App() {
       setMessages((prev) => [...prev, `${payload.username}: ${payload.text}`]);
     });
 
-    client.sendJoin('lobby');
+    client.joinRoom('lobby');
 
     return () => {
       unsubscribe();
+      client.leaveRoom('lobby');
       client.dispose();
     };
   }, [client]);

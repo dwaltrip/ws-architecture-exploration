@@ -4,25 +4,56 @@
 // and the implementation shouldn't have much impact on the core architecture much.
 // So no need to spend too much time here.
 class RoomManager {
-  private rooms: Map<string, Set<string>> = new Map();
+  private rooms = new Map<string, Set<string>>();
 
-  addUserToRoom(roomId: string, userId: string) {
-    if (!this.rooms.has(roomId)) {
-      this.rooms.set(roomId, new Set());
+  join(roomId: string, userId: string) {
+    const members = this.rooms.get(roomId) ?? new Set<string>();
+    const wasExistingRoom = this.rooms.has(roomId);
+    if (!wasExistingRoom) {
+      this.rooms.set(roomId, members);
     }
-    this.rooms.get(roomId)!.add(userId);
+
+    const alreadyMember = members.has(userId);
+    members.add(userId);
+
+    return {
+      createdRoom: !wasExistingRoom,
+      alreadyMember,
+    };
   }
 
-  removeUserFromRoom(roomId: string, userId: string) {
-    this.rooms.get(roomId)?.delete(userId);
-  }
-
-  getUsersInRoom(roomId: string): Set<string> {
-    const usersInRoom = this.rooms.get(roomId);
-    if (!usersInRoom) {
+  leave(roomId: string, userId: string) {
+    const members = this.rooms.get(roomId);
+    if (!members) {
       throw new Error(`Room ${roomId} does not exist`);
     }
-    return usersInRoom;
+    if (!members.has(userId)) {
+      throw new Error(`User ${userId} is not in room ${roomId}`);
+    }
+
+    members.delete(userId);
+    if (members.size === 0) {
+      this.rooms.delete(roomId);
+    }
+
+    return { roomRemoved: !this.rooms.has(roomId) };
+  }
+
+  getMembers(roomId: string): Set<string> | null {
+    const members = this.rooms.get(roomId);
+    return members ? new Set(members) : null;
+  }
+
+  requireMembers(roomId: string): Set<string> {
+    const members = this.rooms.get(roomId);
+    if (!members) {
+      throw new Error(`Room ${roomId} does not exist`);
+    }
+    return members;
+  }
+
+  isMember(roomId: string, userId: string): boolean {
+    return this.rooms.get(roomId)?.has(userId) ?? false;
   }
 
   getRoomsForUser(userId: string): string[] {
