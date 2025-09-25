@@ -1,11 +1,11 @@
 import type {
   ChatEditPayload,
   ChatMessageBroadcastPayload,
+  ChatMessageEditedPayload,
   ChatSendPayload,
   ChatTypingBroadcastPayload,
   ChatTypingStatePayload,
 } from '../../../common/src';
-import { ActionError } from '../ws/errors';
 import type { HandlerContext } from '../ws/types';
 import { ChatService } from './service';
 
@@ -16,20 +16,16 @@ export class ChatActions {
     payload: ChatSendPayload,
     ctx: HandlerContext
   ): Promise<ChatMessageBroadcastPayload> {
-    if (payload.text.trim().length === 0) {
-      throw new ActionError('MESSAGE_EMPTY', 'Messages must contain text');
-    }
+    console.log('[ChatActions] sendMessage', {
+      payload,
+      userId: ctx.userId,
+      username: ctx.username,
+    });
 
-    if (payload.text.length > 1000) {
-      throw new ActionError('MESSAGE_TOO_LONG', 'Messages must be under 1000 characters');
-    }
-
-    if (!(await ctx.isInRoom(payload.roomId))) {
-      throw new ActionError('NOT_IN_ROOM', 'You must join a room before sending messages');
-    }
+    const text = payload.text.trim() || 'Message text missing';
 
     return this.chatService.saveMessage({
-      text: payload.text,
+      text,
       roomId: payload.roomId,
       userId: ctx.userId,
       username: ctx.username,
@@ -39,30 +35,38 @@ export class ChatActions {
   async editMessage(
     payload: ChatEditPayload,
     ctx: HandlerContext
-  ): Promise<ChatMessageBroadcastPayload> {
-    const message = await this.chatService.getMessage(payload.messageId);
+  ): Promise<ChatMessageEditedPayload & { roomId: string }> {
+    console.log('[ChatActions] editMessage', {
+      payload,
+      userId: ctx.userId,
+      username: ctx.username,
+    });
 
-    if (!message) {
-      throw new ActionError('MESSAGE_NOT_FOUND', 'Message not found');
+    const existing = await this.chatService.getMessage(payload.messageId);
+    const roomId = existing?.roomId ?? 'unknown-room';
+
+    if (existing) {
+      await this.chatService.updateMessage(payload.messageId, payload.newText);
     }
 
-    if (message.userId !== ctx.userId) {
-      throw new ActionError('FORBIDDEN', 'You can only edit your own messages');
-    }
-
-    const updated = await this.chatService.updateMessage(payload.messageId, payload.newText);
-
-    if (!updated) {
-      throw new ActionError('MESSAGE_NOT_FOUND', 'Message not found');
-    }
-
-    return updated;
+    return {
+      roomId,
+      messageId: payload.messageId,
+      newText: payload.newText,
+      editedBy: ctx.username,
+    };
   }
 
   async setTypingState(
     payload: ChatTypingStatePayload,
     ctx: HandlerContext
   ): Promise<ChatTypingBroadcastPayload> {
+    console.log('[ChatActions] setTypingState', {
+      payload,
+      userId: ctx.userId,
+      username: ctx.username,
+    });
+
     return {
       roomId: payload.roomId,
       userId: ctx.userId,

@@ -23,9 +23,9 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
         await ctx.broadcastToRoom(
           updated.roomId,
           ServerMessages.chat.edited({
-            messageId: updated.id,
-            newText: updated.text,
-            editedBy: ctx.username,
+            messageId: updated.messageId,
+            newText: updated.newText,
+            editedBy: updated.editedBy,
           })
         );
       } catch (error) {

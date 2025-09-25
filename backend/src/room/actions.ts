@@ -8,7 +8,6 @@ import type {
   RoomUserJoinedPayload,
   RoomUserLeftPayload,
 } from '../../../common/src';
-import { ActionError } from '../ws/errors';
 import type { HandlerContext } from '../ws/types';
 import { RoomService } from './service';
 
@@ -29,17 +28,21 @@ export class RoomActions {
     payload: RoomJoinPayload,
     ctx: HandlerContext
   ): Promise<JoinRoomResult> {
-    const room = await this.roomService.getRoom(payload.roomId);
-    if (!room) {
-      throw new ActionError('ROOM_NOT_FOUND', `Room ${payload.roomId} does not exist`);
-    }
+    console.log('[RoomActions] joinRoom', {
+      payload,
+      userId: ctx.userId,
+      username: ctx.username,
+    });
+
+    const room = await this.roomService.ensureRoom(payload.roomId, payload.roomId);
 
     await this.roomService.addUserToRoom(room.id, ctx.userId, ctx.username);
-    const roomInfo = await this.roomService.getRoomInfo(room.id);
-
-    if (!roomInfo) {
-      throw new ActionError('ROOM_NOT_FOUND', `Room ${payload.roomId} does not exist`);
-    }
+    const roomInfo =
+      (await this.roomService.getRoomInfo(room.id)) ?? {
+        roomId: room.id,
+        name: room.name,
+        users: [],
+      };
 
     const joinEvent: RoomUserJoinedPayload = {
       roomId: room.id,
@@ -57,9 +60,11 @@ export class RoomActions {
     payload: RoomLeavePayload,
     ctx: HandlerContext
   ): Promise<LeaveRoomResult> {
-    if (!(await this.roomService.isUserInRoom(payload.roomId, ctx.userId))) {
-      throw new ActionError('NOT_IN_ROOM', 'You are not in this room');
-    }
+    console.log('[RoomActions] leaveRoom', {
+      payload,
+      userId: ctx.userId,
+      username: ctx.username,
+    });
 
     await this.roomService.removeUserFromRoom(payload.roomId, ctx.userId);
 
@@ -79,6 +84,8 @@ export class RoomActions {
     _payload: RoomListRequestPayload,
     _ctx: HandlerContext
   ): Promise<RoomListPayload> {
+    console.log('[RoomActions] listRooms');
+
     const rooms = await this.roomService.listRooms();
 
     return {
