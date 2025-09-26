@@ -1,25 +1,37 @@
 import type { ChatClientMessage } from '../../../common/src';
 
-export const chatMessages = {
-  send: (
-    text: string,
-    roomId: string
-  ): Extract<ChatClientMessage, { type: 'chat:send' }> => ({
+function createSendMessage(
+  text: string,
+  roomId: string
+): Extract<ChatClientMessage, { type: 'chat:send' }> {
+  return {
     type: 'chat:send',
     payload: { text, roomId },
-  }),
-  edit: (
-    messageId: string,
-    newText: string
-  ): Extract<ChatClientMessage, { type: 'chat:edit' }> => ({
+  };
+}
+
+function createEditMessage(
+  messageId: string,
+  newText: string
+): Extract<ChatClientMessage, { type: 'chat:edit' }> {
+  return {
     type: 'chat:edit',
     payload: { messageId, newText },
-  }),
-  typing: (
-    roomId: string,
-    isTyping: boolean
-  ): Extract<ChatClientMessage, { type: 'chat:typing' }> => ({
+  };
+}
+
+function createTypingMessage(
+  roomId: string,
+  isTyping: boolean
+): Extract<ChatClientMessage, { type: 'chat:typing' }> {
+  return {
     type: 'chat:typing',
     payload: { roomId, isTyping },
-  }),
-} as const;
+  };
+}
+
+export {
+  createSendMessage,
+  createEditMessage,
+  createTypingMessage,
+};

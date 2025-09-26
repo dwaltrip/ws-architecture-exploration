@@ -1,6 +1,6 @@
 import type { ServerMessage } from '../../../common/src';
 import {
-  chatMessages,
+  createSendMessage,
   registerChatHandlers,
 } from '../chat';
 import { WSClient } from './client';
@@ -30,7 +30,7 @@ function createExampleClient(url: string) {
       client.leaveRoom(roomId);
     },
     sendChat(roomId: string, text: string) {
-      client.send(chatMessages.send(text, roomId));
+      client.send(createSendMessage(text, roomId));
     },
     dispose() {
       subscriptions.forEach((unsubscribe) => unsubscribe());
