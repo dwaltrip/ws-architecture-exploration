@@ -26,6 +26,7 @@ export class WSClient {
   private reconnectAttempts = 0;
   private readonly url: string;
   private readonly options: Partial<WSClientOptions>;
+  private pending: ClientMessage[] = [];
 
   constructor(url: string, options: Partial<WSClientOptions> = {}) {
     this.url = url;
@@ -38,17 +39,24 @@ export class WSClient {
     }
 
     this.socket = new WebSocket(this.url, this.options.protocols);
-    this.wireEventHandlers();
+    this.attachSocketListeners(this.socket);
   }
 
   disconnect() {
     this.socket?.close();
     this.socket = undefined;
+    this.pending = [];
   }
 
   send(message: ClientMessage) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error('WebSocket is not connected');
+      this.pending.push(message);
+
+      if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
+        this.connect();
+      }
+
+      return;
     }
 
     this.socket.send(JSON.stringify(message));
@@ -100,16 +108,13 @@ export class WSClient {
     }
   }
 
-  private wireEventHandlers() {
-    if (!this.socket) {
-      return;
-    }
-
-    this.socket.addEventListener('open', () => {
+  private attachSocketListeners(socket: WebSocket) {
+    socket.addEventListener('open', () => {
       this.reconnectAttempts = 0;
+      this.flushPending();
     });
 
-    this.socket.addEventListener('message', (event) => {
+    socket.addEventListener('message', (event) => {
       try {
         const data = JSON.parse(event.data) as ServerMessage;
         this.dispatch(data);
@@ -118,7 +123,7 @@ export class WSClient {
       }
     });
 
-    this.socket.addEventListener('close', () => {
+    socket.addEventListener('close', () => {
       const { maxReconnectAttempts } = { ...DEFAULT_OPTIONS, ...this.options };
 
       if (this.reconnectAttempts < maxReconnectAttempts) {
@@ -127,6 +132,10 @@ export class WSClient {
         setTimeout(() => this.connect(), retryDelay);
       }
     });
+
+    socket.addEventListener('error', (error) => {
+      console.error('WebSocket encountered an error', error);
+    });
   }
 
   private dispatch(message: ServerMessage) {
@@ -134,6 +143,21 @@ export class WSClient {
     handlers?.forEach((handler) => {
       handler(message.payload as never);
     });
+  }
+
+  private flushPending() {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    while (this.pending.length > 0 && this.socket.readyState === WebSocket.OPEN) {
+      const message = this.pending.shift();
+      if (!message) {
+        continue;
+      }
+
+      this.socket.send(JSON.stringify(message));
+    }
   }
 }
 
