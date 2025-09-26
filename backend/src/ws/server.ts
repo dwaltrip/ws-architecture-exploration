@@ -29,6 +29,7 @@ export function createWSServer(domains: WSDomainMap) {
   return {
     handleConnection(socket: WebSocket, userId: string, username: string) {
       clients.set(userId, socket);
+      console.log(`Client connected -- ${userId}`);
 
       const context: HandlerContext = {
         userId,
@@ -85,7 +86,7 @@ export function createWSServer(domains: WSDomainMap) {
           const message = JSON.parse(raw.toString()) as ClientMessage;
 
           if (isSystemRoomMessage(message)) {
-            await handleSystemRoomMessage(message, context);
+            handleSystemRoomMessage(message, context);
             return;
           }
 
@@ -113,6 +114,7 @@ export function createWSServer(domains: WSDomainMap) {
             console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
           }
         }
+        console.log(`Client disconnected -- ${userId}`);  
       });
     },
   };
@@ -122,7 +124,7 @@ function isSystemRoomMessage(message: ClientMessage): message is SystemClientMes
   return message.type === 'system:room-join' || message.type === 'system:room-leave';
 }
 
-async function handleSystemRoomMessage(
+function handleSystemRoomMessage(
   message: SystemClientMessage,
   ctx: HandlerContext
 ) {

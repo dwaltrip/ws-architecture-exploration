@@ -6,7 +6,7 @@ import {
 import { WSClient } from './client';
 import type { ServerMessageHandler } from './client';
 
-export function createExampleClient(url: string) {
+function createExampleClient(url: string) {
   const client = new WSClient(url);
   client.connect();
 
@@ -38,3 +38,16 @@ export function createExampleClient(url: string) {
     },
   } as const;
 }
+
+const getOrCreateExampleClient = (() => {
+  let socket = undefined as ReturnType<typeof createExampleClient> | undefined;
+
+  return function getOrCreateExampleClient(url: string) {
+    if (!socket) {
+      socket = createExampleClient(url);
+    }
+    return socket;
+  };
+})();
+
+export { getOrCreateExampleClient };

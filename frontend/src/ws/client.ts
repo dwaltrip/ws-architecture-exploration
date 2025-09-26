@@ -42,10 +42,13 @@ export class WSClient {
     this.attachSocketListeners(this.socket);
   }
 
+  // TODO: what happens if this is called during "connecting" state?
   disconnect() {
-    this.socket?.close();
-    this.socket = undefined;
-    this.pending = [];
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket?.close();
+      this.socket = undefined;
+      this.pending = [];
+    }
   }
 
   send(message: ClientMessage) {
@@ -110,6 +113,7 @@ export class WSClient {
 
   private attachSocketListeners(socket: WebSocket) {
     socket.addEventListener('open', () => {
+      console.log('WebSocket connected');
       this.reconnectAttempts = 0;
       this.flushPending();
     });
@@ -133,8 +137,8 @@ export class WSClient {
       }
     });
 
-    socket.addEventListener('error', (error) => {
-      console.error('WebSocket encountered an error', error);
+    socket.addEventListener('error', (event) => {
+      console.error('WebSocket encountered an error:', event);
     });
   }
 

@@ -1,11 +1,11 @@
   import { useEffect, useMemo, useState } from 'react';
 
-  import { createExampleClient } from './ws';
+  import { getOrCreateExampleClient } from './ws';
 
 function App() {
   const [messages, setMessages] = useState<string[]>([]);
 
-  const client = useMemo(() => createExampleClient('ws://localhost:3000'), []);
+  const client = useMemo(() => getOrCreateExampleClient('ws://localhost:3000'), []);
 
   useEffect(() => {
     const unsubscribe = client.subscribe('chat:message', (payload) => {
