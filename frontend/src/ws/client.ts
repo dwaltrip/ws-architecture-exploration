@@ -1,15 +1,17 @@
 import type {
-  ClientMessage,
+  HandlerMap,
   MessageType,
   PayloadFor,
-  ServerMessage,
-} from '../../../common/src';
+} from '../../../common/src/utils/message-helpers';
 
-export type ServerMessageHandler<TType extends ServerMessage['type']> = (
-  payload: PayloadFor<ServerMessage, TType>
-) => void;
+export type ServerMessageHandler<
+  TIncoming extends { type: string; payload: unknown },
+  TType extends MessageType<TIncoming>
+> = (payload: PayloadFor<TIncoming, TType>) => void;
 
-type HandlerRegistry = Map<ServerMessage['type'], Set<ServerMessageHandler<any>>>;
+type HandlerRegistry<
+  TIncoming extends { type: string; payload: unknown }
+> = Map<MessageType<TIncoming>, Set<ServerMessageHandler<TIncoming, any>>>;
 
 export interface WSClientOptions {
   maxReconnectAttempts: number;
@@ -20,17 +22,32 @@ const DEFAULT_OPTIONS: WSClientOptions = {
   maxReconnectAttempts: 5,
 };
 
-export class WSClient {
+export interface WSClientConfig<
+  TIncoming extends { type: string; payload: unknown }
+> {
+  url: string;
+  options?: Partial<WSClientOptions>;
+  handlers?: HandlerMap<TIncoming>;
+}
+
+export class WSClient<
+  TIncoming extends { type: string; payload: unknown },
+  TOutgoing extends { type: string; payload: unknown }
+> {
   private socket?: WebSocket;
-  private handlers: HandlerRegistry = new Map();
+  private handlers: HandlerRegistry<TIncoming> = new Map();
   private reconnectAttempts = 0;
   private readonly url: string;
   private readonly options: Partial<WSClientOptions>;
-  private pending: ClientMessage[] = [];
+  private pendingMessages: TOutgoing[] = [];
 
-  constructor(url: string, options: Partial<WSClientOptions> = {}) {
-    this.url = url;
-    this.options = options;
+  constructor(config: WSClientConfig<TIncoming>) {
+    this.url = config.url;
+    this.options = config.options ?? {};
+
+    if (config.handlers) {
+      this.registerHandlers(config.handlers);
+    }
   }
 
   connect() {
@@ -47,13 +64,13 @@ export class WSClient {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket?.close();
       this.socket = undefined;
-      this.pending = [];
+      this.pendingMessages = [];
     }
   }
 
-  send(message: ClientMessage) {
+  send(message: TOutgoing) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      this.pending.push(message);
+      this.pendingMessages.push(message);
 
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
         this.connect();
@@ -62,65 +79,58 @@ export class WSClient {
       return;
     }
 
-    this.socket.send(JSON.stringify(message));
+    this.socket.send(this.encode(message));
   }
 
-  joinRoom(roomId: string) {
-    const normalized = normalizeRoomId(roomId);
-    const message: Extract<ClientMessage, { type: 'system:room-join' }> = {
-      type: 'system:room-join',
-      payload: { roomId: normalized },
-    };
-
-    this.send(message);
-  }
-
-  leaveRoom(roomId: string) {
-    const normalized = normalizeRoomId(roomId);
-    const message: Extract<ClientMessage, { type: 'system:room-leave' }> = {
-      type: 'system:room-leave',
-      payload: { roomId: normalized },
-    };
-
-    this.send(message);
-  }
-
-  on<TType extends MessageType<ServerMessage>>(
+  on<TType extends MessageType<TIncoming>>(
     type: TType,
-    handler: ServerMessageHandler<TType>
+    handler: ServerMessageHandler<TIncoming, TType>
   ) {
     const registry = this.handlers.get(type) ?? new Set();
-    registry.add(handler as ServerMessageHandler<any>);
+    registry.add(handler as ServerMessageHandler<TIncoming, any>);
     this.handlers.set(type, registry);
 
     return () => this.off(type, handler);
   }
 
-  off<TType extends MessageType<ServerMessage>>(
+  off<TType extends MessageType<TIncoming>>(
     type: TType,
-    handler: ServerMessageHandler<TType>
+    handler: ServerMessageHandler<TIncoming, TType>
   ) {
     const registry = this.handlers.get(type);
     if (!registry) {
       return;
     }
 
-    registry.delete(handler as ServerMessageHandler<any>);
+    registry.delete(handler as ServerMessageHandler<TIncoming, any>);
     if (registry.size === 0) {
       this.handlers.delete(type);
     }
+  }
+
+  registerHandlers(handlerMap: HandlerMap<TIncoming>) {
+    (Object.keys(handlerMap) as Array<MessageType<TIncoming>>).forEach((type) => {
+      const handler = handlerMap[type];
+      if (handler) {
+        this.on(type, handler);
+      }
+    });
   }
 
   private attachSocketListeners(socket: WebSocket) {
     socket.addEventListener('open', () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
-      this.flushPending();
+      this.flushPendingMessages();
     });
 
     socket.addEventListener('message', (event) => {
       try {
-        const data = JSON.parse(event.data) as ServerMessage;
+        if (typeof event.data !== 'string') {
+          throw new Error('Unsupported WebSocket message format');
+        }
+
+        const data = this.decode(event.data);
         this.dispatch(data);
       } catch (error) {
         console.error('Failed to parse WebSocket message', error);
@@ -142,34 +152,33 @@ export class WSClient {
     });
   }
 
-  private dispatch(message: ServerMessage) {
+  private dispatch(message: TIncoming) {
     const handlers = this.handlers.get(message.type);
     handlers?.forEach((handler) => {
       handler(message.payload as never);
     });
   }
 
-  private flushPending() {
+  private flushPendingMessages() {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    while (this.pending.length > 0 && this.socket.readyState === WebSocket.OPEN) {
-      const message = this.pending.shift();
+    while (this.pendingMessages.length > 0 && this.socket.readyState === WebSocket.OPEN) {
+      const message = this.pendingMessages.shift();
       if (!message) {
         continue;
       }
 
-      this.socket.send(JSON.stringify(message));
+      this.socket.send(this.encode(message));
     }
   }
-}
 
-function normalizeRoomId(roomId: string) {
-  const trimmed = roomId.trim();
-  if (!trimmed) {
-    throw new Error('Room id must be a non-empty string');
+  private decode(raw: string): TIncoming {
+    return JSON.parse(raw) as TIncoming;
   }
 
-  return trimmed;
+  private encode(message: TOutgoing) {
+    return JSON.stringify(message);
+  }
 }

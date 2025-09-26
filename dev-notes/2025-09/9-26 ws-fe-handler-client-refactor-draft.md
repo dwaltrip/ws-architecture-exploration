@@ -28,7 +28,7 @@ export function mergeHandlerMaps<TUnion extends { type: string; payload: unknown
       merged[type] = map[type];
     });
     return merged;
-  }, {});
+  }, {} as HandlerMap<TUnion>);
 }
 
 // ... rest of message helper utilities (unchanged)
@@ -36,7 +36,7 @@ export function mergeHandlerMaps<TUnion extends { type: string; payload: unknown
 
 ## Chat Domain Handlers
 
-Chat state updates stay in `chat/state-actions.ts` (renamed from `actions.ts` to clarify that these functions mutate local state). Domain message handling lives in its own module and only relies on the shared `createHandlerMap` helper. The handlers module never imports `WSClient`.
+Chat state updates stay in `chat/actions.ts`. Domain message handling lives in its own module and only relies on the shared `createHandlerMap` helper, so the handlers module never imports `WSClient`.
 
 ```ts
 // frontend/src/chat/handlers.ts
@@ -45,8 +45,8 @@ import {
   addNewMessage,
   updateIsTypingStatus,
   updateMessageWithEdits,
-} from './state-actions';
-import { createHandlerMap } from '../../../common/src/utils/message-helpers';
+} from './actions';
+import { createHandlerMap } from '../../../common/src';
 
 const chatHandlers = createHandlerMap<ChatServerMessage>({
   'chat:message': (payload) => {
@@ -66,19 +66,19 @@ const chatHandlers = createHandlerMap<ChatServerMessage>({
 export { chatHandlers };
 ```
 
-## Chat WebSocket Actions
+## Chat WebSocket Effects
 
-Domain-specific send helpers move out of the `WSClient` bootstrap. We expose them from a dedicated module that binds to an instantiated client. These helpers can grow alongside UI needs without leaking into the transport layer.
+Domain-specific send helpers move out of the `WSClient` bootstrap. We expose them from a dedicated module that binds to an instantiated client so UI code can call clear effects without worrying about message construction.
 
 ```ts
-// frontend/src/chat/ws-actions.ts
-import type { ClientMessage } from '../../../common/src';
+// frontend/src/chat/ws-effects.ts
+import type { ClientMessage, ServerMessage } from '../../../common/src';
 import { createSendMessage } from './messages';
 import type { WSClient } from '../ws/client';
 
-type ChatWsClient = WSClient<any, ClientMessage>; // use concrete unions when the refactor lands
+type ChatWsClient = WSClient<ServerMessage, ClientMessage>;
 
-function createChatWsActions(client: ChatWsClient) {
+function createChatWsEffects(client: ChatWsClient) {
   return {
     postNewMessage(roomId: string, text: string) {
       client.send(createSendMessage(text, roomId));
@@ -87,58 +87,105 @@ function createChatWsActions(client: ChatWsClient) {
   } as const;
 }
 
-export { createChatWsActions };
+export { createChatWsEffects };
+```
+
+## System WebSocket Effects
+
+Room management becomes another domain-level helper instead of living on the generic client. The helpers wrap the same strongly typed client instance, so we keep the system behavior small and composable.
+
+```ts
+// frontend/src/system/ws-effects.ts
+import type { ClientMessage, ServerMessage } from '../../../common/src';
+import type { WSClient } from '../ws/client';
+
+type SystemWsClient = WSClient<ServerMessage, ClientMessage>;
+
+type SystemRoomJoinMessage = Extract<ClientMessage, { type: 'system:room-join' }>;
+type SystemRoomLeaveMessage = Extract<ClientMessage, { type: 'system:room-leave' }>;
+
+function normalizeRoomId(roomId: string) {
+  const trimmed = roomId.trim();
+  if (!trimmed) {
+    throw new Error('Room id must be a non-empty string');
+  }
+
+  return trimmed;
+}
+
+function createSystemWsEffects(client: SystemWsClient) {
+  return {
+    joinRoom(roomId: string) {
+      const message: SystemRoomJoinMessage = {
+        type: 'system:room-join',
+        payload: { roomId: normalizeRoomId(roomId) },
+      };
+
+      client.send(message);
+    },
+    leaveRoom(roomId: string) {
+      const message: SystemRoomLeaveMessage = {
+        type: 'system:room-leave',
+        payload: { roomId: normalizeRoomId(roomId) },
+      };
+
+      client.send(message);
+    },
+  } as const;
+}
+
+export { createSystemWsEffects };
 ```
 
 ## Generic WebSocket Client
 
-The WebSocket client becomes fully generic. It no longer knows about chat or system messages and instead accepts unions for incoming and outgoing traffic. Handlers can be registered individually via `on` or in bulk with `registerHandlers`. The `on` method still returns an unsubscribe function, which callers use for teardown. If we later need batch removal, we can introduce a companion `removeHandlers` method, but the unsubscribe handle covers the current use cases.
+The WebSocket client is fully generic. It no longer knows about any specific domain and instead works with `{ type, payload }` unions for both incoming and outgoing traffic. Handlers can be registered individually via `on` or in bulk with `registerHandlers`. The `on` method still returns an unsubscribe function, which callers use for teardown. If we later need batch removal, we can introduce a companion `removeHandlers` method, but the per-handler unsubscribe covers today’s needs.
 
 ```ts
 // frontend/src/ws/client.ts
 import type { HandlerMap, MessageType, PayloadFor } from '../../../common/src/utils/message-helpers';
 
-export type WebSocketServerMessageHandler<
+export type ServerMessageHandler<
   TIncoming extends { type: string; payload: unknown },
   TType extends MessageType<TIncoming>
 > = (payload: PayloadFor<TIncoming, TType>) => void;
 
-type WebSocketHandlerRegistry<
+type HandlerRegistry<
   TIncoming extends { type: string; payload: unknown }
-> = Map<MessageType<TIncoming>, Set<WebSocketServerMessageHandler<TIncoming, any>>>;
+> = Map<MessageType<TIncoming>, Set<ServerMessageHandler<TIncoming, any>>>;
 
-export interface WebSocketClientOptions {
+export interface WSClientOptions {
   maxReconnectAttempts: number;
   protocols?: string | string[];
 }
 
-export interface WebSocketClientConfig<
-  TIncoming extends { type: string; payload: unknown },
-  TOutgoing extends { type: string; payload: unknown }
-> {
-  url: string;
-  options?: Partial<WebSocketClientOptions>;
-  handlers?: HandlerMap<TIncoming>;
-}
-
-const DEFAULT_OPTIONS: WebSocketClientOptions = {
+const DEFAULT_OPTIONS: WSClientOptions = {
   maxReconnectAttempts: 5,
 };
+
+export interface WSClientConfig<
+  TIncoming extends { type: string; payload: unknown }
+> {
+  url: string;
+  options?: Partial<WSClientOptions>;
+  handlers?: HandlerMap<TIncoming>;
+}
 
 export class WSClient<
   TIncoming extends { type: string; payload: unknown },
   TOutgoing extends { type: string; payload: unknown }
 > {
   private socket?: WebSocket;
-  private handlers: WebSocketHandlerRegistry<TIncoming> = new Map();
+  private handlers: HandlerRegistry<TIncoming> = new Map();
   private reconnectAttempts = 0;
   private readonly url: string;
-  private readonly options: Partial<WebSocketClientOptions>;
+  private readonly options: Partial<WSClientOptions>;
   private pendingMessages: TOutgoing[] = [];
 
-  constructor(config: WebSocketClientConfig<TIncoming, TOutgoing>) {
+  constructor(config: WSClientConfig<TIncoming>) {
     this.url = config.url;
     this.options = config.options ?? {};
+
     if (config.handlers) {
       this.registerHandlers(config.handlers);
     }
@@ -151,32 +198,16 @@ export class WSClient<
     // identical control flow, but `message` is strongly typed
   }
 
-  joinRoom(roomId: string) {
-    const message: Extract<TOutgoing, { type: 'system:room-join' }> = {
-      type: 'system:room-join',
-      payload: { roomId: normalizeRoomId(roomId) },
-    };
-    this.send(message);
-  }
-
-  leaveRoom(roomId: string) {
-    const message: Extract<TOutgoing, { type: 'system:room-leave' }> = {
-      type: 'system:room-leave',
-      payload: { roomId: normalizeRoomId(roomId) },
-    };
-    this.send(message);
-  }
-
   on<TType extends MessageType<TIncoming>>(
     type: TType,
-    handler: WebSocketServerMessageHandler<TIncoming, TType>
+    handler: ServerMessageHandler<TIncoming, TType>
   ) {
     // identical registry logic, now typed
   }
 
   off<TType extends MessageType<TIncoming>>(
     type: TType,
-    handler: WebSocketServerMessageHandler<TIncoming, TType>
+    handler: ServerMessageHandler<TIncoming, TType>
   ) {
     // identical cleanup logic
   }
@@ -209,8 +240,6 @@ export class WSClient<
     return JSON.stringify(message);
   }
 }
-
-// ... normalizeRoomId helper unchanged
 ```
 
 ## Example Client Setup
@@ -220,8 +249,8 @@ export class WSClient<
 ```ts
 // frontend/src/ws/example.ts
 import type { ClientMessage, ServerMessage } from '../../../common/src';
-import { chatHandlers } from '../chat/handlers';
-import { mergeHandlerMaps } from '../../../common/src/utils/message-helpers';
+import { chatHandlers } from '../chat';
+import { mergeHandlerMaps } from '../../../common/src';
 import { WSClient } from './client';
 
 type AppIncomingMessage = ServerMessage;

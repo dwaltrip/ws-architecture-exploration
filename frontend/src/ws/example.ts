@@ -1,46 +1,25 @@
-import type { ServerMessage } from '../../../common/src';
-import {
-  createSendMessage,
-  registerChatHandlers,
-} from '../chat';
+import type { ClientMessage, ServerMessage } from '../../../common/src';
+import { chatHandlers } from '../chat';
+import { mergeHandlerMaps } from '../../../common/src';
 import { WSClient } from './client';
-import type { ServerMessageHandler } from './client';
+
+type AppIncomingMessage = ServerMessage;
+type AppOutgoingMessage = ClientMessage;
 
 function createExampleClient(url: string) {
-  const client = new WSClient(url);
+  const client = new WSClient<AppIncomingMessage, AppOutgoingMessage>({
+    url,
+    handlers: mergeHandlerMaps(chatHandlers),
+  });
+
   client.connect();
 
-  const subscriptions = [
-    registerChatHandlers(client),
-    // registerSomeOtherDomainHandlers(client),
-  ];
-
-  return {
-    client,
-    subscribe<TType extends ServerMessage['type']>(
-      type: TType,
-      handler: ServerMessageHandler<TType>
-    ) {
-      return client.on(type, handler);
-    },
-    joinRoom(roomId: string) {
-      client.joinRoom(roomId);
-    },
-    leaveRoom(roomId: string) {
-      client.leaveRoom(roomId);
-    },
-    sendChat(roomId: string, text: string) {
-      client.send(createSendMessage(text, roomId));
-    },
-    dispose() {
-      subscriptions.forEach((unsubscribe) => unsubscribe());
-      client.disconnect();
-    },
-  } as const;
+  return client;
 }
 
 const getOrCreateExampleClient = (() => {
-  let socket = undefined as ReturnType<typeof createExampleClient> | undefined;
+  let socket =
+    undefined as WSClient<AppIncomingMessage, AppOutgoingMessage> | undefined;
 
   return function getOrCreateExampleClient(url: string) {
     if (!socket) {

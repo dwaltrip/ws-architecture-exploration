@@ -1,16 +1,15 @@
+import type { ChatServerMessage } from '../../../common/src';
+import type { HandlerMap } from '../../../common/src';
 import {
   addNewMessage,
   updateMessageWithEdits,
   updateIsTypingStatus,
 } from './actions';
+import { createHandlerMap } from '../../../common/src';
 
-// I think this would be something related the message / payload types in common
-//  
-type SomeSpecialTypeThing = any;
-type AnotherSpecialTypeThing = any; 
+// Keeping this file as a scratchpad while we iterate on the handler shape.
 
-// Idea 1
-const ChatHandlers: Handler<SomeSpecialTypeThing> = {
+const chatHandlersIdea1: HandlerMap<ChatServerMessage> = {
   'chat:message': (payload) => {
     const { text, roomId, userId } = payload;
     addNewMessage(text, roomId, userId);
@@ -25,8 +24,7 @@ const ChatHandlers: Handler<SomeSpecialTypeThing> = {
   },
 };
 
-// Idea 2: alternatively.. maybe a factory fn would make the types simpler??
-const ChatHandlers = createHandlerMap<AnotherSpecialTypeThing>({
+const chatHandlersIdea2 = createHandlerMap<ChatServerMessage>({
   'chat:message': (payload) => {
     const { text, roomId, userId } = payload;
     addNewMessage(text, roomId, userId);
@@ -41,4 +39,4 @@ const ChatHandlers = createHandlerMap<AnotherSpecialTypeThing>({
   },
 });
 
-export { ChatHandlers };
+export { chatHandlersIdea1, chatHandlersIdea2 };
