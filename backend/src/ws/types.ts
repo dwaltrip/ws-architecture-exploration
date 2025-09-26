@@ -5,15 +5,15 @@ export interface HandlerContext {
   userId: string;
   username: string;
   rooms: {
-    join: (roomId: string) => Promise<void>;
-    leave: (roomId: string) => Promise<void>;
-    getMembers: (roomId: string) => Promise<Set<string> | null>;
-    isMember: (roomId: string, userId?: string) => Promise<boolean>;
+    join: (roomId: string) => void;
+    leave: (roomId: string) => void;
+    getMembers: (roomId: string) => Set<string> | null;
+    isMember: (roomId: string, userId?: string) => boolean;
   };
   send: (message: ServerMessage) => void;
   broadcast: (message: ServerMessage, excludeSelf?: boolean) => void;
-  broadcastToRoom: (roomId: string, message: ServerMessage, excludeSelf?: boolean) => Promise<void>;
-  isInRoom: (roomId: string) => Promise<boolean>;
+  broadcastToRoom: (roomId: string, message: ServerMessage, excludeSelf?: boolean) => void;
+  isInRoom: (roomId: string) => boolean;
 }
 
 export type DomainHandler<

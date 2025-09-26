@@ -40,10 +40,10 @@ export function createWSServer(domains: WSDomainMap) {
           leave: async (roomId: string) => {
             roomManager.leave(roomId, userId);
           },
-          getMembers: async (roomId: string) => {
+          getMembers: (roomId: string) => {
             return roomManager.getMembers(roomId);
           },
-          isMember: async (roomId: string, targetUserId = userId) => {
+          isMember: (roomId: string, targetUserId = userId) => {
             return roomManager.isMember(roomId, targetUserId);
           },
         },
@@ -61,7 +61,7 @@ export function createWSServer(domains: WSDomainMap) {
           }
         },
 
-        broadcastToRoom: async (roomId, message, excludeSelf) => {
+        broadcastToRoom: (roomId, message, excludeSelf) => {
           const members = roomManager.requireMembers(roomId);
           const data = JSON.stringify(message);
           const promises = Array.from(members).map((memberId) => {
@@ -77,7 +77,7 @@ export function createWSServer(domains: WSDomainMap) {
             });
         },
 
-        isInRoom: async (roomId) => roomManager.isMember(roomId, userId),
+        isInRoom: (roomId) => roomManager.isMember(roomId, userId),
       };
 
       socket.on('message', async (raw) => {
@@ -134,7 +134,7 @@ async function handleSystemRoomMessage(
         throw new Error('Room id must be a non-empty string.');
       }
 
-      await ctx.rooms.join(normalizedRoomId);
+      ctx.rooms.join(normalizedRoomId);
       return;
     }
 
@@ -145,7 +145,7 @@ async function handleSystemRoomMessage(
         throw new Error('Room id must be a non-empty string.');
       }
 
-      await ctx.rooms.leave(normalizedRoomId);
+      ctx.rooms.leave(normalizedRoomId);
       return;
     }
 
