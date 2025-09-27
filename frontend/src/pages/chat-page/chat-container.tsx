@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { userChatStore  } from "./chat-store";
 // import { useWsClient } from "../../ws/use-ws-client";
@@ -17,7 +17,24 @@ function ChatContainer() {
     currentRoom,
     availableRooms,
     // usersWhoAreTyping,
+
+    setCurrentRoom,
   } = userChatStore();
+
+  useEffect(() => {
+    if (!currentRoom) {
+      console.log('No current room, joining general');
+      systemEffects.joinRoom('general');
+      setCurrentRoom({ id: 'general', name: 'General' });
+    }
+  }, [currentRoom, setCurrentRoom, systemEffects]);
+
+  const postMessage = () => {
+    console.log('Posting message', { newMessageText, currentRoom });
+    chatEffects.postNewMessage(currentRoom?.id || '', newMessageText);
+  }
+  const isSendDisabled = !newMessageText.trim() || !currentRoom;
+  console.log('isSendDisabled', isSendDisabled);
 
   return (
     <div className="chat-container">
@@ -25,6 +42,7 @@ function ChatContainer() {
       <main>
         <div className="chat-header">
           <h2>Chat</h2>
+          <p>Room: {currentRoom ? currentRoom.name : 'None'}</p>
         </div>
 
         <div className="chat-messages">
@@ -43,9 +61,10 @@ function ChatContainer() {
             onChange={(e) => setNewMessageText(e.target.value)}
           />
 
-          <button onClick={() => {
-            chatEffects.postNewMessage(currentRoom?.id || '', newMessageText);
-          }}>
+          <button 
+            onClick={() => postMessage()}
+            disabled={isSendDisabled}
+          >
             Send
           </button>
         </div>

@@ -130,12 +130,14 @@ function handleSystemRoomMessage(
 ) {
   switch (message.type) {
     case 'system:room-join': {
+      console.log('Handling room join', message.payload);
       const { roomId } = message.payload;
       const normalizedRoomId = normalizeRoomId(roomId);
       if (!normalizedRoomId) {
         throw new Error('Room id must be a non-empty string.');
       }
 
+      console.log(`User ${ctx.userId} joining room ${normalizedRoomId}`);
       ctx.rooms.join(normalizedRoomId);
       return;
     }

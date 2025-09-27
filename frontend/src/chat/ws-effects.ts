@@ -9,6 +9,9 @@ type ChatWsClient = WSClient<ServerMessage, ClientMessage>;
 function createChatWsEffects(client: ChatWsClient) {
   return {
     postNewMessage(roomId: string, text: string) {
+      if (!text.trim()) {
+        return;
+      }
       client.send(createSendMessage(text, roomId));
     },
   } as const;
