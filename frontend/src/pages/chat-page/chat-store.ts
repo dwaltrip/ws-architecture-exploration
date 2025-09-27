@@ -14,8 +14,8 @@ interface ChatState {
   setUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
 }
 
-// const userChatStore = create<ChatState>((set, get) => ({
-const userChatStore = create<ChatState>((set) => ({
+// const useChatStore = create<ChatState>((set, get) => ({
+const useChatStore = create<ChatState>((set) => ({
   messages: [],
   currentRoom: null,
   availableRooms: [],
@@ -49,4 +49,4 @@ const userChatStore = create<ChatState>((set) => ({
 
 
 
-export { userChatStore };
+export { useChatStore };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { userChatStore  } from "./chat-store";
+import { useChatStore  } from "./chat-store";
 // import { useWsClient } from "../../ws/use-ws-client";
 import { useChatWsEffects } from "../../chat";
 import { useSystemWsEffects } from "../../system";
@@ -19,7 +19,7 @@ function ChatContainer() {
     // usersWhoAreTyping,
 
     setCurrentRoom,
-  } = userChatStore();
+  } = useChatStore();
 
   useEffect(() => {
     if (!currentRoom) {
