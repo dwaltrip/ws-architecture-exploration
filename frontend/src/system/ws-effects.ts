@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
-import type { ClientMessage, ServerMessage } from '../../../common/src';
+import type { ClientMessage } from '../../../common/src';
 
-import type { WSClient } from '../ws/client';
+import type { AppWsClient } from '../ws/types';
 import { getOrCreateWsClient } from '../ws/create-client';
-
-type SystemWsClient = WSClient<ServerMessage, ClientMessage>;
 
 type SystemRoomJoinMessage = Extract<ClientMessage, { type: 'system:room-join' }>;
 type SystemRoomLeaveMessage = Extract<ClientMessage, { type: 'system:room-leave' }>;
@@ -23,7 +21,7 @@ function normalizeRoomId(roomId: string) {
   return trimmed;
 }
 
-function createSystemWsEffects(client: SystemWsClient) {
+function createSystemWsEffects(client: AppWsClient) {
   return {
     joinRoom(roomId: string) {
       const message: SystemRoomJoinMessage = {
@@ -44,6 +42,16 @@ function createSystemWsEffects(client: SystemWsClient) {
   } as const;
 }
 
+const getSystemWsEffects = (() => {
+  let effects: SystemWsEffects | null = null;
+  return function(client: AppWsClient): SystemWsEffects {
+    if (!effects) {
+      effects = createSystemWsEffects(client);
+    }
+    return effects;
+  };
+})();
+
 function useSystemWsEffects() {
   return useMemo(() => {
     console.log('Creating chat WS effects');
@@ -53,4 +61,4 @@ function useSystemWsEffects() {
 }
 
 export type { SystemWsEffects };
-export { createSystemWsEffects, useSystemWsEffects};
+export { createSystemWsEffects, useSystemWsEffects, getSystemWsEffects};

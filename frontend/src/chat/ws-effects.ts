@@ -1,16 +1,15 @@
-import type { ClientMessage, ServerMessage } from '../../../common/src';
-import { createSendMessage } from './messages';
-import type { WSClient } from '../ws/client';
 import { useMemo } from 'react';
+
+import type { AppWsClient } from '../ws/types';
 import { getOrCreateWsClient } from '../ws/create-client';
 
-type ChatWsClient = WSClient<ServerMessage, ClientMessage>;
+import { createSendMessage } from './messages';
 
 interface ChatWsEffects {
   postNewMessage(roomId: string, text: string): void;
 }
 
-function createChatWsEffects(client: ChatWsClient) {
+function createChatWsEffects(client: AppWsClient) {
   return {
     postNewMessage(roomId: string, text: string) {
       if (!text.trim()) {
@@ -21,14 +20,25 @@ function createChatWsEffects(client: ChatWsClient) {
   } as const;
 }
 
-// function useChatWsEffects(client: ChatWsClient) {
+const getChatWsEffects = (() => {
+  let effects: ChatWsEffects | null = null;
+  return function(client: AppWsClient): ChatWsEffects {
+    if (!effects) {
+      effects = createChatWsEffects(client);
+    }
+    return effects;
+  };
+})();
+
+// TODO: not sure if I want this or if `getChatWsEffects` is better
+// useEffect might be better
 function useChatWsEffects() {
   return useMemo(() => {
-    console.log('Creating chat WS effects');
+    console.log('Creating chat WS effects')
     const client = getOrCreateWsClient();
     return createChatWsEffects(client);
   }, []);
 }
 
 export type { ChatWsEffects };
-export { createChatWsEffects, useChatWsEffects };
+export { createChatWsEffects, useChatWsEffects, getChatWsEffects };
