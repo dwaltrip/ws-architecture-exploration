@@ -2,14 +2,14 @@ import { mergeHandlerMaps } from '../../../common/src';
 import type { AppIncomingMessage, AppOutgoingMessage, AppWsClient } from './types';
 
 import { WSClient } from './client';
-import { chatHandlers } from '../chat';
+import { getChatHandlers } from '../chat/handlers';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
 
 function createWsClient(): AppWsClient {
   const client = new WSClient<AppIncomingMessage, AppOutgoingMessage>({
     url: WEBSOCKET_URL,
-    handlers: mergeHandlerMaps(chatHandlers),
+    handlers: mergeHandlerMaps(getChatHandlers()),
   });
 
   client.connect();
