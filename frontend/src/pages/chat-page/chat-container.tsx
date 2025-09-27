@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { useChatStore  } from "./chat-store";
-// import { useWsClient } from "../../ws/use-ws-client";
-import { useChatWsEffects } from "../../chat";
-import { useSystemWsEffects } from "../../system";
+import { useChatStore } from "./chat-store";
+import { useChatActions } from "../../chat";
 
 function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
 
-  const chatEffects = useChatWsEffects();
-  const systemEffects = useSystemWsEffects();
-  // const client = useWsClient();.
+  const { joinRoom, sendMessage } = useChatActions();
 
   const {
     messages,
@@ -24,14 +20,14 @@ function ChatContainer() {
   useEffect(() => {
     if (!currentRoom) {
       console.log('No current room, joining general');
-      systemEffects.joinRoom('general');
+      // systemEffects.joinRoom('general');
       setCurrentRoom({ id: 'general', name: 'General' });
     }
-  }, [currentRoom, setCurrentRoom, systemEffects]);
+  }, [currentRoom, setCurrentRoom]);
 
   const postMessage = () => {
     console.log('Posting message', { newMessageText, currentRoom });
-    chatEffects.postNewMessage(currentRoom?.id || '', newMessageText);
+    sendMessage(currentRoom?.id || '', newMessageText);
   }
   const isSendDisabled = !newMessageText.trim() || !currentRoom;
   console.log('isSendDisabled', isSendDisabled);
@@ -77,7 +73,7 @@ function ChatContainer() {
             <li
               key={room.id}
               className={currentRoom?.id === room.id ? 'active' : ''}
-              onClick={() => systemEffects.joinRoom(room.id)}
+              onClick={() => joinRoom(room.id)}
             >
               {room.name}
             </li>

@@ -47,6 +47,10 @@ const useChatStore = create<ChatState>((set) => ({
   },
 }));
 
+const chatStore = useChatStore;
 
+function getChatStore(): typeof chatStore {
+  return chatStore;
+}
 
-export { useChatStore };
+export { useChatStore, chatStore, getChatStore };
