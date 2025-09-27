@@ -1,15 +1,16 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { userChatStore  } from "./chat-store";
-import { getOrCreateWsClient } from "../../ws/create-client";
+// import { useWsClient } from "../../ws/use-ws-client";
+import { useChatWsEffects } from "../../chat";
+import { useSystemWsEffects } from "../../system";
 
-function Chat() {
+function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
 
-  const client = useMemo(
-    () => getOrCreateExampleClient('ws://localhost:3000'),
-    []
-  );
+  const chatEffects = useChatWsEffects();
+  const systemEffects = useSystemWsEffects();
+  // const client = useWsClient();.
 
   const {
     messages,
@@ -17,7 +18,6 @@ function Chat() {
     availableRooms,
     // usersWhoAreTyping,
   } = userChatStore();
-
 
   return (
     <div className="chat-container">
@@ -44,7 +44,7 @@ function Chat() {
           />
 
           <button onClick={() => {
-            post(newMessageText);
+            chatEffects.postNewMessage(currentRoom?.id || '', newMessageText);
           }}>
             Send
           </button>
@@ -58,7 +58,7 @@ function Chat() {
             <li
               key={room.id}
               className={currentRoom?.id === room.id ? 'active' : ''}
-              onClick={() => setCurrentRoom(room)}
+              onClick={() => systemEffects.joinRoom(room.id)}
             >
               {room.name}
             </li>
@@ -74,3 +74,4 @@ function Chat() {
   );
 }
 
+export { ChatContainer}

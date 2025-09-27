@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
 import type { ClientMessage, ServerMessage } from '../../../common/src';
+
 import type { WSClient } from '../ws/client';
+import { getOrCreateWsClient } from '../ws/create-client';
 
 type SystemWsClient = WSClient<ServerMessage, ClientMessage>;
 
@@ -36,4 +39,12 @@ function createSystemWsEffects(client: SystemWsClient) {
   } as const;
 }
 
-export { createSystemWsEffects };
+function useSystemWsEffects() {
+  return useMemo(() => {
+    console.log('Creating chat WS effects');
+    const client = getOrCreateWsClient();
+    return createSystemWsEffects(client);
+  }, []);
+}
+
+export { createSystemWsEffects, useSystemWsEffects};

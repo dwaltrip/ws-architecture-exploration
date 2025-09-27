@@ -2,15 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { createChatWsEffects } from './chat';
 import { createSystemWsEffects } from './system';
-import { getOrCreateExampleClient } from './ws';
+import { getOrCreateWsClient } from './ws/create-client';
 
 function App() {
   const [messages, setMessages] = useState<string[]>([]);
 
-  const client = useMemo(
-    () => getOrCreateExampleClient('ws://localhost:3000'),
-    []
-  );
+  const client = useMemo(() => getOrCreateWsClient(), []);
   const chatEffects = useMemo(() => createChatWsEffects(client), [client]);
   const systemEffects = useMemo(() => createSystemWsEffects(client), [client]);
 

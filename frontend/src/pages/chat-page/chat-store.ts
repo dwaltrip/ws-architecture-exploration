@@ -14,7 +14,8 @@ interface ChatState {
   setUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
 }
 
-const userChatStore = create<ChatState>((set, get) => ({
+// const userChatStore = create<ChatState>((set, get) => ({
+const userChatStore = create<ChatState>((set) => ({
   messages: [],
   currentRoom: null,
   availableRooms: [],
