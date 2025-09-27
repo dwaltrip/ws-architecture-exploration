@@ -6,6 +6,10 @@ import { getOrCreateWsClient } from '../ws/create-client';
 
 type ChatWsClient = WSClient<ServerMessage, ClientMessage>;
 
+interface ChatWsEffects {
+  postNewMessage(roomId: string, text: string): void;
+}
+
 function createChatWsEffects(client: ChatWsClient) {
   return {
     postNewMessage(roomId: string, text: string) {
@@ -26,4 +30,5 @@ function useChatWsEffects() {
   }, []);
 }
 
+export type { ChatWsEffects };
 export { createChatWsEffects, useChatWsEffects };

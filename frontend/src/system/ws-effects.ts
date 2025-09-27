@@ -9,6 +9,11 @@ type SystemWsClient = WSClient<ServerMessage, ClientMessage>;
 type SystemRoomJoinMessage = Extract<ClientMessage, { type: 'system:room-join' }>;
 type SystemRoomLeaveMessage = Extract<ClientMessage, { type: 'system:room-leave' }>;
 
+interface SystemWsEffects {
+  joinRoom(roomId: string): void;
+  leaveRoom(roomId: string): void;
+}
+
 function normalizeRoomId(roomId: string) {
   const trimmed = roomId.trim();
   if (!trimmed) {
@@ -47,4 +52,5 @@ function useSystemWsEffects() {
   }, []);
 }
 
+export type { SystemWsEffects };
 export { createSystemWsEffects, useSystemWsEffects};
