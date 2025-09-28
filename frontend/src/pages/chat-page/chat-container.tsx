@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useChatStore } from "./chat-store";
-import { useChatActions } from "../../chat/actions";
+import { useChatActions } from "../../chat/use-chat-actions";
 
 function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
