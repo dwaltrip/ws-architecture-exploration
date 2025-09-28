@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { ChatMessage } from "../../../common/src/types/db";
 
+import type { ChatActions } from "./types";
 import { getChatStore, type useChatStore } from "../pages/chat-page/chat-store";
 import { getSystemWsEffects, type SystemWsEffects } from "../system";
 import { getOrCreateWsClient } from "../ws/create-client";
@@ -10,14 +11,6 @@ interface ChatActionsDeps {
   chatStore: typeof useChatStore;
   chatWsEffects: ChatWsEffects;
   systemWsEffects: SystemWsEffects;
-}
-
-interface ChatActions {
-  sendMessage: (roomId: string, text: string) => void;
-  // TODO: this ChatMessage type needs to be more thought out.. not helping rightnow..
-  addReceivedMessage: (chatMsg: ChatMessage) => void;
-  joinRoom: (roomId: string) => void;
-  // updateIsTypingStatus: (roomId: string, userId: string, isTyping: boolean) => void;
 }
 
 function createChatActions(

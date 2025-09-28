@@ -1,8 +1,7 @@
 import type { ChatServerMessage, HandlerMap } from '../../../common/src';
 // import { createHandlerMap } from '../../../common/src';
 
-import { getChatActions, type ChatActions } from './actions';
-
+import type { ChatActions } from "./types";
 
 type ChatHandlerMap = HandlerMap<ChatServerMessage>;
 
@@ -11,11 +10,16 @@ type ChatHandlerMap = HandlerMap<ChatServerMessage>;
 // QUESTION: Does createHandlerMap do anything different than directly typing
 //    the object literal??
 // --------------------------------------------------------------------------
-function createChatHandlers(actions: ChatActions): ChatHandlerMap {
-  const { addReceivedMessage } = actions;
+
+interface Deps {
+  getChatActions: () => ChatActions;
+}
+
+function createChatHandlers({ getChatActions }: Deps): ChatHandlerMap {
   return {
     'chat:message': (payload) => {
       const { id, text, userId } = payload;
+      const { addReceivedMessage } = getChatActions();
       addReceivedMessage({ id, content: text, user: { id: userId, name: 'User ' + userId } });
     },
     'chat:edited': (payload) => {
@@ -31,9 +35,10 @@ function createChatHandlers(actions: ChatActions): ChatHandlerMap {
 
 const getChatHandlers = (function () {
   let chatHandlers: ChatHandlerMap | null = null;
-  return function getChatHandlers(): ChatHandlerMap {
+
+  return function getChatHandlers(deps: Deps): ChatHandlerMap {
     if (!chatHandlers) {
-      chatHandlers = createChatHandlers(getChatActions());
+      chatHandlers = createChatHandlers(deps);
     }
     return chatHandlers;
   };
