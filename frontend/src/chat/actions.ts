@@ -1,13 +1,11 @@
 import type { ChatMessage } from "../../../common/src/types/db";
 
-import type { AppWsClient } from "../ws/types";
 import type { ChatActions } from "./types";
 import { type useChatStore } from "../pages/chat-page/chat-store";
 import { type SystemWsEffects } from "../system";
 import { type ChatWsEffects } from "./ws-effects";
 
 interface ChatActionDeps {
-  // getWsClient: () => AppWsClient;
   getSystemWsEffects: () => SystemWsEffects;
 
   getChatStore: () => typeof useChatStore;
@@ -15,7 +13,6 @@ interface ChatActionDeps {
 }
 
 function createChatActions({
-  // getWsClient,
   getSystemWsEffects,
   getChatStore,
   getChatWsEffects,
@@ -48,7 +45,5 @@ const getChatActions = (function() {
   }
 })();
 
-
 export type { ChatActions, ChatActionDeps };
-// export { createChatActions, getChatActions };
 export { getChatActions };
