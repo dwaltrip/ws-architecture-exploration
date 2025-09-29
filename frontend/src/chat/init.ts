@@ -1,4 +1,9 @@
-// Importing the handlers ensures they register with the websocket client.
-import './handlers';
+import { connectWsClient } from '../ws/create-client';
+import { registerChatHandlers } from './handlers';
 
-export {};
+function initChatDomain(): void {
+  registerChatHandlers();
+  connectWsClient();
+}
+
+export { initChatDomain };

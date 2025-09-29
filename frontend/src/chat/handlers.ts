@@ -27,7 +27,7 @@ const chatHandlers: ChatHandlerMap = {
 
 let handlersRegistered = false;
 
-function ensureChatHandlersRegistered() {
+function registerChatHandlers(): void {
   if (handlersRegistered) {
     return;
   }
@@ -36,7 +36,5 @@ function ensureChatHandlersRegistered() {
   handlersRegistered = true;
 }
 
-ensureChatHandlersRegistered();
-
 export type { ChatHandlerMap };
-export { chatHandlers, ensureChatHandlersRegistered };
+export { chatHandlers, registerChatHandlers };

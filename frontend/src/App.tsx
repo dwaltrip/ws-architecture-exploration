@@ -1,10 +1,11 @@
 import { ChatContainer } from './pages/chat-page/chat-container';
+import { ChatProvider } from './chat/provider';
 
 function App() {
   return (
-    <div>
+    <ChatProvider>
       <ChatContainer />
-    </div>
+    </ChatProvider>
   );
 }
 
