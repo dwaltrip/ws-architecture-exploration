@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
-import { getOrCreateWsClient } from "./create-client";
+import { connectWsClient } from "./create-client";
 import type { AppWsClient } from "./types";
 
 function useWsClient() {
   const wsRef = useRef<AppWsClient | null>(null);
 
   useEffect(() => {
-    const socket = getOrCreateWsClient();
+    const socket = connectWsClient();
     wsRef.current = socket;
     return () => socket.disconnect();
   }, []);

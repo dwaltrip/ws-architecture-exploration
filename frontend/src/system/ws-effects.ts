@@ -1,6 +1,6 @@
 import type { ClientMessage } from '../../../common/src';
 
-import type { AppWsClient } from '../ws/types';
+import { getWsClient } from '../ws/create-client';
 
 type SystemRoomJoinMessage = Extract<ClientMessage, { type: 'system:room-join' }>;
 type SystemRoomLeaveMessage = Extract<ClientMessage, { type: 'system:room-leave' }>;
@@ -19,11 +19,7 @@ function normalizeRoomId(roomId: string) {
   return trimmed;
 }
 
-interface Deps {
-  getWsClient: () => AppWsClient;
-}
-
-function createSystemWsEffects({ getWsClient }: Deps) {
+function createSystemWsEffects(): SystemWsEffects {
   return {
     joinRoom(roomId: string) {
       const message: SystemRoomJoinMessage = {
@@ -44,16 +40,7 @@ function createSystemWsEffects({ getWsClient }: Deps) {
   } as const;
 }
 
-const getSystemWsEffects = (() => {
-  let effects: SystemWsEffects | null = null;
-
-  return function(deps: Deps): SystemWsEffects {
-    if (!effects) {
-      effects = createSystemWsEffects(deps);
-    }
-    return effects;
-  };
-})();
+const systemWsEffects = createSystemWsEffects();
 
 export type { SystemWsEffects };
-export { createSystemWsEffects, getSystemWsEffects};
+export { createSystemWsEffects, systemWsEffects };

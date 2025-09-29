@@ -1,39 +1,26 @@
-import { mergeHandlerMaps } from '../../../common/src';
 import type { AppIncomingMessage, AppOutgoingMessage, AppWsClient } from './types';
 
 import { WSClient } from './client';
-// import { getChatHandlers } from '../chat/handlers';
-import type { ChatHandlerMap } from '../chat/handlers';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
 
-interface Deps {
-  getChatHandlers: () => ChatHandlerMap;
+const wsClient = new WSClient<AppIncomingMessage, AppOutgoingMessage>({
+  url: WEBSOCKET_URL,
+});
+
+let isConnected = false;
+
+function connectWsClient(): AppWsClient {
+  if (!isConnected) {
+    wsClient.connect();
+    isConnected = true;
+  }
+
+  return wsClient;
 }
 
-function createWsClient({ getChatHandlers }: Deps): AppWsClient {
-  const client = new WSClient<AppIncomingMessage, AppOutgoingMessage>({
-    url: WEBSOCKET_URL,
-    handlers: mergeHandlerMaps(getChatHandlers()),
-    // handlers: mergeHandlerMaps(getChatHandlers),
-  });
-
-  client.connect();
-
-  return client;
+function getWsClient(): AppWsClient {
+  return wsClient;
 }
 
-const getOrCreateWsClient = (() => {
-  let socket =
-    undefined as WSClient<AppIncomingMessage, AppOutgoingMessage> | undefined;
-
-  return function getOrCreateWsClient(deps: Deps): AppWsClient {
-    if (!socket) {
-      socket = createWsClient(deps);
-    }
-    return socket;
-  };
-})();
-
-// export { createWsClient, getOrCreateWsClient };
-export { getOrCreateWsClient };
+export { connectWsClient, getWsClient };

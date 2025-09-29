@@ -1,48 +1,42 @@
 import type { ChatServerMessage, HandlerMap } from '../../../common/src';
-// import { createHandlerMap } from '../../../common/src';
 
-import type { ChatActions } from "./types";
+import { getWsClient } from '../ws/create-client';
+import { chatActions } from './actions';
 
 type ChatHandlerMap = HandlerMap<ChatServerMessage>;
 
-// const chatHandlers: ChatHandlerMap = createHandlerMap<ChatServerMessage>({
-// --------------------------------------------------------------------------
-// QUESTION: Does createHandlerMap do anything different than directly typing
-//    the object literal??
-// --------------------------------------------------------------------------
+const chatHandlers: ChatHandlerMap = {
+  'chat:message': (payload) => {
+    const { id, text, userId } = payload;
+    const { addReceivedMessage } = chatActions;
+    addReceivedMessage({
+      id,
+      content: text,
+      user: { id: userId, name: 'User ' + userId },
+    });
+  },
+  'chat:edited': (_payload) => {
+    // const { messageId, newText } = payload;
+    // updateMessageWithEdits(messageId, newText);
+  },
+  'chat:typing': (_payload) => {
+    // const { roomId, userId, isTyping } = payload;
+    // updateIsTypingStatus(roomId, userId, isTyping);
+  },
+};
 
-interface Deps {
-  getChatActions: () => ChatActions;
+let handlersRegistered = false;
+
+function ensureChatHandlersRegistered() {
+  if (handlersRegistered) {
+    return;
+  }
+
+  getWsClient().registerHandlers(chatHandlers);
+  handlersRegistered = true;
 }
 
-function createChatHandlers({ getChatActions }: Deps): ChatHandlerMap {
-  return {
-    'chat:message': (payload) => {
-      const { id, text, userId } = payload;
-      const { addReceivedMessage } = getChatActions();
-      addReceivedMessage({ id, content: text, user: { id: userId, name: 'User ' + userId } });
-    },
-    'chat:edited': (payload) => {
-      // const { messageId, newText } = payload;
-      // updateMessageWithEdits(messageId, newText);
-    },
-    'chat:typing': (payload) => {
-      // const { roomId, userId, isTyping } = payload;
-      // updateIsTypingStatus(roomId, userId, isTyping);
-    },
-  };
-}
-
-const getChatHandlers = (function () {
-  let chatHandlers: ChatHandlerMap | null = null;
-
-  return function getChatHandlers(deps: Deps): ChatHandlerMap {
-    if (!chatHandlers) {
-      chatHandlers = createChatHandlers(deps);
-    }
-    return chatHandlers;
-  };
-})();
+ensureChatHandlersRegistered();
 
 export type { ChatHandlerMap };
-export { getChatHandlers };
+export { chatHandlers, ensureChatHandlersRegistered };
