@@ -20,7 +20,7 @@ function ChatContainer() {
   useEffect(() => {
     if (!currentRoom) {
       console.log('No current room, joining general');
-      // systemEffects.joinRoom('general');
+      joinRoom('general');
       setCurrentRoom({ id: 'general', name: 'General' });
     }
   }, [currentRoom, setCurrentRoom]);
