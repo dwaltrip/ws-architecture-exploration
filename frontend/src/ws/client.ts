@@ -59,7 +59,7 @@ export class WSClient<
   connect() {
     this.shouldReconnect = true;
 
-    if (this.isSocketActive) {
+    if (this.isSocketInState(WebSocket.OPEN, WebSocket.CONNECTING)) {
       const dateStr = new Date().toISOString();
       console.warn(`[${dateStr}] WebSocket is already connected or connecting`);
       return;
@@ -72,16 +72,17 @@ export class WSClient<
     this.shouldReconnect = false;
     this.reconnectTimeout?.clear();
 
-    if (!this.socket) {
-      this.cleanupAfterClose();
-      return;
-    }
-
-    if (this.isSocketActive || this.isSocketClosing) {
-      this.socket.close();
-    }
-
+    const socket = this.socket;
     this.socket = undefined;
+
+    if (socket && (
+      socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING ||
+      socket.readyState === WebSocket.CLOSING
+    )) {
+      socket.close();
+    }
+
     this.cleanupAfterClose();
   }
 
@@ -90,11 +91,6 @@ export class WSClient<
 
     if (!socket) {
       this.pendingMessages.push(message);
-
-      if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
-        this.connect();
-      }
-
       return;
     }
 
@@ -140,12 +136,6 @@ export class WSClient<
     socket.addEventListener('open', () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
-      this.reconnectTimeout = createTimeout(() => {
-        if (!this.shouldReconnect) {
-          return;
-        }
-        this.connect();
-      }, this.reconnectAttempts * 1000);
       this.flushPendingMessages();
     });
 
@@ -188,13 +178,13 @@ export class WSClient<
     const retryDelay = this.reconnectAttempts * 1000;
     this.reconnectTimeout?.clear();
 
-    setTimeout(() => {
+    this.reconnectTimeout = createTimeout(() => {
       if (!this.shouldReconnect) {
         return;
       }
-
       this.connect();
     }, retryDelay);
+    this.reconnectTimeout.start();
   }
 
   private cleanupAfterClose() {
@@ -240,17 +230,9 @@ export class WSClient<
     return socket;
   }
 
-  private get isSocketOpen() {
-    return Boolean(this.openSocket);
-  }
-
-  private get isSocketActive() {
+  private isSocketInState(...states: number[]) {
     const state = this.socket?.readyState;
-    return state === WebSocket.OPEN || state === WebSocket.CONNECTING;
-  }
-
-  private get isSocketClosing() {
-    return this.socket?.readyState === WebSocket.CLOSING;
+    return state !== undefined && states.includes(state);
   }
 
   private decode(raw: string): TIncoming {
