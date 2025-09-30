@@ -40,6 +40,8 @@ export class WSClient<
   private readonly url: string;
   private readonly options: Partial<WSClientOptions>;
   private pendingMessages: TOutgoing[] = [];
+  private shouldReconnect = false;
+  private reconnectTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(config: WSClientConfig<TIncoming>) {
     this.url = config.url;
@@ -51,21 +53,44 @@ export class WSClient<
   }
 
   connect() {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      return;
+    this.shouldReconnect = true;
+
+    if (this.socket) {
+      if (
+        this.socket.readyState === WebSocket.OPEN ||
+        // Let the in-flight handshake finish rather than spawning a second socket.
+        this.socket.readyState === WebSocket.CONNECTING
+      ) {
+        const dateStr = new Date().toISOString();
+        console.warn(`[${dateStr}] WebSocket is already connected or connecting`);
+        return;
+      }
     }
 
+    this.clearReconnectTimer();
     this.socket = new WebSocket(this.url, this.options.protocols);
     this.attachSocketListeners(this.socket);
   }
 
-  // TODO: what happens if this is called during "connecting" state?
   disconnect() {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket?.close();
-      this.socket = undefined;
-      this.pendingMessages = [];
+    this.shouldReconnect = false;
+    this.clearReconnectTimer();
+
+    if (!this.socket) {
+      this.cleanupAfterClose();
+      return;
     }
+
+    if (
+      this.socket.readyState === WebSocket.CONNECTING ||
+      this.socket.readyState === WebSocket.OPEN ||
+      this.socket.readyState === WebSocket.CLOSING
+    ) {
+      this.socket.close();
+    }
+
+    this.socket = undefined;
+    this.cleanupAfterClose();
   }
 
   send(message: TOutgoing) {
@@ -121,6 +146,7 @@ export class WSClient<
     socket.addEventListener('open', () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+      this.clearReconnectTimer();
       this.flushPendingMessages();
     });
 
@@ -138,18 +164,50 @@ export class WSClient<
     });
 
     socket.addEventListener('close', () => {
-      const { maxReconnectAttempts } = { ...DEFAULT_OPTIONS, ...this.options };
-
-      if (this.reconnectAttempts < maxReconnectAttempts) {
-        this.reconnectAttempts += 1;
-        const retryDelay = this.reconnectAttempts * 1000;
-        setTimeout(() => this.connect(), retryDelay);
-      }
+      this.handleSocketClosed();
     });
 
     socket.addEventListener('error', (event) => {
       console.error('WebSocket encountered an error:', event);
     });
+  }
+
+  private handleSocketClosed() {
+    this.socket = undefined;
+
+    if (!this.shouldReconnect) {
+      this.cleanupAfterClose();
+      return;
+    }
+
+    const { maxReconnectAttempts } = { ...DEFAULT_OPTIONS, ...this.options };
+    if (this.reconnectAttempts >= maxReconnectAttempts) {
+      this.cleanupAfterClose();
+      return;
+    }
+
+    this.reconnectAttempts += 1;
+    const retryDelay = this.reconnectAttempts * 1000;
+    this.clearReconnectTimer();
+    this.reconnectTimeout = setTimeout(() => {
+      if (!this.shouldReconnect) {
+        return;
+      }
+
+      this.connect();
+    }, retryDelay);
+  }
+
+  private cleanupAfterClose() {
+    this.pendingMessages = [];
+    this.reconnectAttempts = 0;
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
   }
 
   private dispatch(message: TIncoming) {

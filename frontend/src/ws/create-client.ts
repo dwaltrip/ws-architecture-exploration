@@ -8,14 +8,8 @@ const wsClient = new WSClient<AppIncomingMessage, AppOutgoingMessage>({
   url: WEBSOCKET_URL,
 });
 
-let isConnected = false;
-
 function connectWsClient(): AppWsClient {
-  if (!isConnected) {
-    wsClient.connect();
-    isConnected = true;
-  }
-
+  wsClient.connect();
   return wsClient;
 }
 
