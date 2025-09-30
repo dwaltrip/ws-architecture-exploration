@@ -3,6 +3,7 @@ import type {
   MessageType,
   PayloadFor,
 } from '../../../common/src/utils/message-helpers';
+import { createTimeout, type Timeout } from '../utils/create-timeout';
 
 export type ServerMessageHandler<
   TIncoming extends { type: string; payload: unknown },
@@ -41,7 +42,7 @@ export class WSClient<
   private readonly options: WSClientOptions;
   private pendingMessages: TOutgoing[] = [];
   private shouldReconnect = false;
-  private reconnectTimeout?: ReturnType<typeof setTimeout>;
+  private reconnectTimeout?: Timeout;
 
   constructor(config: WSClientConfig<TIncoming>) {
     this.url = config.url;
@@ -69,7 +70,7 @@ export class WSClient<
 
   disconnect() {
     this.shouldReconnect = false;
-    this.clearReconnectTimer();
+    this.reconnectTimeout?.clear();
 
     if (!this.socket) {
       this.cleanupAfterClose();
@@ -85,7 +86,9 @@ export class WSClient<
   }
 
   send(message: TOutgoing) {
-    if (!this.isSocketOpen) {
+    const socket = this.openSocket;
+
+    if (!socket) {
       this.pendingMessages.push(message);
 
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
@@ -95,7 +98,7 @@ export class WSClient<
       return;
     }
 
-    this.socket.send(this.encode(message));
+    socket.send(this.encode(message));
   }
 
   on<TType extends MessageType<TIncoming>>(
@@ -137,7 +140,12 @@ export class WSClient<
     socket.addEventListener('open', () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
-      this.clearReconnectTimer();
+      this.reconnectTimeout = createTimeout(() => {
+        if (!this.shouldReconnect) {
+          return;
+        }
+        this.connect();
+      }, this.reconnectAttempts * 1000);
       this.flushPendingMessages();
     });
 
@@ -178,8 +186,9 @@ export class WSClient<
 
     this.reconnectAttempts += 1;
     const retryDelay = this.reconnectAttempts * 1000;
-    this.clearReconnectTimer();
-    this.reconnectTimeout = setTimeout(() => {
+    this.reconnectTimeout?.clear();
+
+    setTimeout(() => {
       if (!this.shouldReconnect) {
         return;
       }
@@ -193,15 +202,8 @@ export class WSClient<
     this.reconnectAttempts = 0;
   }
 
-  private clearReconnectTimer() {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = undefined;
-    }
-  }
-
   private spawnSocket() {
-    this.clearReconnectTimer();
+    this.reconnectTimeout?.clear();
     const socket = new WebSocket(this.url, this.options.protocols);
     this.attachSocketListeners(socket);
     this.socket = socket;
@@ -215,22 +217,31 @@ export class WSClient<
   }
 
   private flushPendingMessages() {
-    if (!this.isSocketOpen) {
+    const socket = this.openSocket;
+    if (!socket) {
       return;
     }
 
-    while (this.pendingMessages.length > 0 && this.isSocketOpen) {
+    while (this.pendingMessages.length > 0 && socket.readyState === WebSocket.OPEN) {
       const message = this.pendingMessages.shift();
       if (!message) {
         continue;
       }
-
-      this.socket.send(this.encode(message));
+      socket.send(this.encode(message));
     }
   }
 
+  private get openSocket() {
+    const socket = this.socket;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return undefined;
+    }
+
+    return socket;
+  }
+
   private get isSocketOpen() {
-    return this.socket?.readyState === WebSocket.OPEN;
+    return Boolean(this.openSocket);
   }
 
   private get isSocketActive() {
