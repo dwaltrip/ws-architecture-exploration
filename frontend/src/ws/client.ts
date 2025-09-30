@@ -38,14 +38,17 @@ export class WSClient<
   private handlers: HandlerRegistry<TIncoming> = new Map();
   private reconnectAttempts = 0;
   private readonly url: string;
-  private readonly options: Partial<WSClientOptions>;
+  private readonly options: WSClientOptions;
   private pendingMessages: TOutgoing[] = [];
   private shouldReconnect = false;
   private reconnectTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(config: WSClientConfig<TIncoming>) {
     this.url = config.url;
-    this.options = config.options ?? {};
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...(config.options ?? {}),
+    };
 
     if (config.handlers) {
       this.registerHandlers(config.handlers);
@@ -67,9 +70,7 @@ export class WSClient<
       }
     }
 
-    this.clearReconnectTimer();
-    this.socket = new WebSocket(this.url, this.options.protocols);
-    this.attachSocketListeners(this.socket);
+    this.spawnSocket();
   }
 
   disconnect() {
@@ -180,8 +181,7 @@ export class WSClient<
       return;
     }
 
-    const { maxReconnectAttempts } = { ...DEFAULT_OPTIONS, ...this.options };
-    if (this.reconnectAttempts >= maxReconnectAttempts) {
+    if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
       this.cleanupAfterClose();
       return;
     }
@@ -208,6 +208,13 @@ export class WSClient<
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = undefined;
     }
+  }
+
+  private spawnSocket() {
+    this.clearReconnectTimer();
+    const socket = new WebSocket(this.url, this.options.protocols);
+    this.attachSocketListeners(socket);
+    this.socket = socket;
   }
 
   private dispatch(message: TIncoming) {
