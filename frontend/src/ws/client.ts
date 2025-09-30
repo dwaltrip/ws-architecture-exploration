@@ -58,16 +58,10 @@ export class WSClient<
   connect() {
     this.shouldReconnect = true;
 
-    if (this.socket) {
-      if (
-        this.socket.readyState === WebSocket.OPEN ||
-        // Let the in-flight handshake finish rather than spawning a second socket.
-        this.socket.readyState === WebSocket.CONNECTING
-      ) {
-        const dateStr = new Date().toISOString();
-        console.warn(`[${dateStr}] WebSocket is already connected or connecting`);
-        return;
-      }
+    if (this.isSocketActive) {
+      const dateStr = new Date().toISOString();
+      console.warn(`[${dateStr}] WebSocket is already connected or connecting`);
+      return;
     }
 
     this.spawnSocket();
@@ -82,11 +76,7 @@ export class WSClient<
       return;
     }
 
-    if (
-      this.socket.readyState === WebSocket.CONNECTING ||
-      this.socket.readyState === WebSocket.OPEN ||
-      this.socket.readyState === WebSocket.CLOSING
-    ) {
+    if (this.isSocketActive || this.isSocketClosing) {
       this.socket.close();
     }
 
@@ -95,7 +85,7 @@ export class WSClient<
   }
 
   send(message: TOutgoing) {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+    if (!this.isSocketOpen) {
       this.pendingMessages.push(message);
 
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
@@ -225,11 +215,11 @@ export class WSClient<
   }
 
   private flushPendingMessages() {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+    if (!this.isSocketOpen) {
       return;
     }
 
-    while (this.pendingMessages.length > 0 && this.socket.readyState === WebSocket.OPEN) {
+    while (this.pendingMessages.length > 0 && this.isSocketOpen) {
       const message = this.pendingMessages.shift();
       if (!message) {
         continue;
@@ -237,6 +227,19 @@ export class WSClient<
 
       this.socket.send(this.encode(message));
     }
+  }
+
+  private get isSocketOpen() {
+    return this.socket?.readyState === WebSocket.OPEN;
+  }
+
+  private get isSocketActive() {
+    const state = this.socket?.readyState;
+    return state === WebSocket.OPEN || state === WebSocket.CONNECTING;
+  }
+
+  private get isSocketClosing() {
+    return this.socket?.readyState === WebSocket.CLOSING;
   }
 
   private decode(raw: string): TIncoming {
