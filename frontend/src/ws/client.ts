@@ -23,6 +23,8 @@ const DEFAULT_OPTIONS: WSClientOptions = {
   maxReconnectAttempts: 5,
 };
 
+const RECONNECT_BASE_DELAY_MS = 1000;
+
 export interface WSClientConfig<
   TIncoming extends { type: string; payload: unknown }
 > {
@@ -43,6 +45,7 @@ export class WSClient<
   private pendingMessages: TOutgoing[] = [];
   private shouldReconnect = false;
   private reconnectTimeout?: Timeout;
+  private isConnecting = false;
 
   constructor(config: WSClientConfig<TIncoming>) {
     this.url = config.url;
@@ -59,7 +62,7 @@ export class WSClient<
   connect() {
     this.shouldReconnect = true;
 
-    if (this.isSocketInState(WebSocket.OPEN, WebSocket.CONNECTING)) {
+    if (this.isConnecting || this.isSocketInState(WebSocket.OPEN, WebSocket.CONNECTING)) {
       const dateStr = new Date().toISOString();
       console.warn(`[${dateStr}] WebSocket is already connected or connecting`);
       return;
@@ -70,16 +73,13 @@ export class WSClient<
 
   disconnect() {
     this.shouldReconnect = false;
+    this.isConnecting = false;
     this.reconnectTimeout?.clear();
 
     const socket = this.socket;
     this.socket = undefined;
 
-    if (socket && (
-      socket.readyState === WebSocket.OPEN ||
-      socket.readyState === WebSocket.CONNECTING ||
-      socket.readyState === WebSocket.CLOSING
-    )) {
+    if (socket && this.isSocketInStateFor(socket, WebSocket.OPEN, WebSocket.CONNECTING, WebSocket.CLOSING)) {
       socket.close();
     }
 
@@ -125,16 +125,19 @@ export class WSClient<
 
   registerHandlers(handlerMap: HandlerMap<TIncoming>) {
     (Object.keys(handlerMap) as Array<MessageType<TIncoming>>).forEach((type) => {
-      const handler = handlerMap[type];
-      if (handler) {
-        this.on(type, handler);
-      }
+      this.on(type, handlerMap[type]);
     });
   }
 
   private attachSocketListeners(socket: WebSocket) {
     socket.addEventListener('open', () => {
+      // Ignore stale open events - only process if we're still connecting
+      if (!this.isConnecting) {
+        return;
+      }
+
       console.log('WebSocket connected');
+      this.isConnecting = false;
       this.reconnectAttempts = 0;
       this.flushPendingMessages();
     });
@@ -153,6 +156,7 @@ export class WSClient<
     });
 
     socket.addEventListener('close', () => {
+      this.isConnecting = false;
       this.handleSocketClosed();
     });
 
@@ -162,6 +166,12 @@ export class WSClient<
   }
 
   private handleSocketClosed() {
+    // Ignore stale close events - only process if socket is still set
+    // (spawnSocket clears it before creating new socket)
+    if (this.socket === undefined) {
+      return;
+    }
+
     this.socket = undefined;
 
     if (!this.shouldReconnect) {
@@ -175,7 +185,7 @@ export class WSClient<
     }
 
     this.reconnectAttempts += 1;
-    const retryDelay = this.reconnectAttempts * 1000;
+    const retryDelay = this.reconnectAttempts * RECONNECT_BASE_DELAY_MS;
     this.reconnectTimeout?.clear();
 
     this.reconnectTimeout = createTimeout(() => {
@@ -194,6 +204,17 @@ export class WSClient<
 
   private spawnSocket() {
     this.reconnectTimeout?.clear();
+
+    // Clean up any existing socket before spawning a new one
+    const oldSocket = this.socket;
+    if (oldSocket) {
+      this.socket = undefined;
+      if (this.isSocketInStateFor(oldSocket, WebSocket.OPEN, WebSocket.CONNECTING, WebSocket.CLOSING)) {
+        oldSocket.close();
+      }
+    }
+
+    this.isConnecting = true;
     const socket = new WebSocket(this.url, this.options.protocols);
     this.attachSocketListeners(socket);
     this.socket = socket;
@@ -202,7 +223,12 @@ export class WSClient<
   private dispatch(message: TIncoming) {
     const handlers = this.handlers.get(message.type);
     handlers?.forEach((handler) => {
-      handler(message.payload as never);
+      try {
+        // TODO: Improve type constraints to avoid 'as never' cast
+        handler(message.payload as never);
+      } catch (error) {
+        console.error(`Error in handler for message type "${message.type}":`, error);
+      }
     });
   }
 
@@ -212,18 +238,15 @@ export class WSClient<
       return;
     }
 
-    while (this.pendingMessages.length > 0 && socket.readyState === WebSocket.OPEN) {
-      const message = this.pendingMessages.shift();
-      if (!message) {
-        continue;
-      }
+    while (this.pendingMessages.length > 0) {
+      const message = this.pendingMessages.shift()!;
       socket.send(this.encode(message));
     }
   }
 
   private get openSocket() {
     const socket = this.socket;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (!socket || !this.isSocketInStateFor(socket, WebSocket.OPEN)) {
       return undefined;
     }
 
@@ -233,6 +256,10 @@ export class WSClient<
   private isSocketInState(...states: number[]) {
     const state = this.socket?.readyState;
     return state !== undefined && states.includes(state);
+  }
+
+  private isSocketInStateFor(socket: WebSocket, ...states: number[]) {
+    return states.includes(socket.readyState);
   }
 
   private decode(raw: string): TIncoming {
