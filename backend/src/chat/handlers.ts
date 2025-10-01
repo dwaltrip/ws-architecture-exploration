@@ -9,14 +9,14 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
       const message = await actions.sendMessage(payload, ctx);
       await ctx.broadcastToRoom(
         message.roomId,
-        ChatMessageBuilders.chat.message(message)
+        ChatMessageBuilders.message(message)
       );
     },
     'chat:edit': async (payload, ctx) => {
       const updated = await actions.editMessage(payload, ctx);
       await ctx.broadcastToRoom(
         updated.roomId,
-        ChatMessageBuilders.chat.edited({
+        ChatMessageBuilders.edited({
           messageId: updated.messageId,
           newText: updated.newText,
           editedBy: updated.editedBy,
@@ -27,7 +27,7 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
       const typingState = await actions.setTypingState(payload, ctx);
       await ctx.broadcastToRoom(
         typingState.roomId,
-        ChatMessageBuilders.chat.typing(typingState),
+        ChatMessageBuilders.typing(typingState),
         true
       );
     },

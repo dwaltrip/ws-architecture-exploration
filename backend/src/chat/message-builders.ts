@@ -1,29 +1,22 @@
 import type {
-  ChatMessageBroadcastPayload,
-  ChatMessageEditedPayload,
   ChatServerMessage,
-  ChatTypingBroadcastPayload,
+  ChatServerPayloadMap,
 } from '../../../common/src';
 
+function createChatMessageBuilder<TType extends keyof ChatServerPayloadMap & string>(
+  type: TType
+): (
+  payload: ChatServerPayloadMap[TType]
+) => Extract<ChatServerMessage, { type: TType }> {
+  return (payload) =>
+    ({
+      type,
+      payload,
+    } as Extract<ChatServerMessage, { type: TType }>);
+}
+
 export const ChatMessageBuilders = {
-  chat: {
-    message: (
-      payload: ChatMessageBroadcastPayload
-    ): Extract<ChatServerMessage, { type: 'chat:message' }> => ({
-      type: 'chat:message',
-      payload,
-    }),
-    edited: (
-      payload: ChatMessageEditedPayload
-    ): Extract<ChatServerMessage, { type: 'chat:edited' }> => ({
-      type: 'chat:edited',
-      payload,
-    }),
-    typing: (
-      payload: ChatTypingBroadcastPayload
-    ): Extract<ChatServerMessage, { type: 'chat:typing' }> => ({
-      type: 'chat:typing',
-      payload,
-    }),
-  },
+  message: createChatMessageBuilder('chat:message'),
+  edited: createChatMessageBuilder('chat:edited'),
+  typing: createChatMessageBuilder('chat:typing'),
 };
