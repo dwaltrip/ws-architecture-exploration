@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { ChatMessage, ChatRoom, UserId } from '../../../../common/src/types/db';
+import type { ChatMessage, ChatRoom, UserId } from '../../../common/src/types/db';
 
 interface ChatState {
   messages: ChatMessage[];

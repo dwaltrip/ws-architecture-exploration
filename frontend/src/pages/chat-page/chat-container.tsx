@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { useChatStore } from "./chat-store";
+import { useChatStore } from "../../chat/chat-store";
 import { useChatActions } from "../../chat/use-chat-actions";
 
 function ChatContainer() {

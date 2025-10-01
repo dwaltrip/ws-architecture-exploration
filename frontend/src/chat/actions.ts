@@ -1,6 +1,6 @@
 import type { ChatActions } from "./types";
 
-import { chatStore } from "../pages/chat-page/chat-store";
+import { chatStore } from "./chat-store";
 import { systemWsEffects } from "../system";
 import { chatWsEffects } from "./ws-effects";
 
