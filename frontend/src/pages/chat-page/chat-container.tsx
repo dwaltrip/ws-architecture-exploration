@@ -28,6 +28,7 @@ function ChatContainer() {
   const postMessage = () => {
     console.log('Posting message', { newMessageText, currentRoom });
     sendMessage(currentRoom?.id || '', newMessageText);
+    setNewMessageText('');
   }
   const isSendDisabled = !newMessageText.trim() || !currentRoom;
   console.log('isSendDisabled', isSendDisabled);
