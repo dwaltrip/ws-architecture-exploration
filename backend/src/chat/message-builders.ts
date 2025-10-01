@@ -3,10 +3,9 @@ import type {
   ChatMessageEditedPayload,
   ChatServerMessage,
   ChatTypingBroadcastPayload,
-  ServerMessage,
 } from '../../../common/src';
 
-export const ServerMessages = {
+export const ChatMessageBuilders = {
   chat: {
     message: (
       payload: ChatMessageBroadcastPayload

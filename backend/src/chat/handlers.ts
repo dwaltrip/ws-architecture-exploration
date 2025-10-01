@@ -1,6 +1,6 @@
 import type { ChatClientMessage } from '../../../common/src';
 import { ChatActions } from './actions';
-import { ServerMessages } from '../ws/messages';
+import { ChatMessageBuilders } from './message-builders';
 import type { DomainHandlers } from '../ws/types';
 
 export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatClientMessage> {
@@ -9,14 +9,14 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
       const message = await actions.sendMessage(payload, ctx);
       await ctx.broadcastToRoom(
         message.roomId,
-        ServerMessages.chat.message(message)
+        ChatMessageBuilders.chat.message(message)
       );
     },
     'chat:edit': async (payload, ctx) => {
       const updated = await actions.editMessage(payload, ctx);
       await ctx.broadcastToRoom(
         updated.roomId,
-        ServerMessages.chat.edited({
+        ChatMessageBuilders.chat.edited({
           messageId: updated.messageId,
           newText: updated.newText,
           editedBy: updated.editedBy,
@@ -27,7 +27,7 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
       const typingState = await actions.setTypingState(payload, ctx);
       await ctx.broadcastToRoom(
         typingState.roomId,
-        ServerMessages.chat.typing(typingState),
+        ChatMessageBuilders.chat.typing(typingState),
         true
       );
     },
