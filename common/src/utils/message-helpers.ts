@@ -20,11 +20,11 @@ export type MessageHandler<
 > = (payload: PayloadFor<TUnion, TType>) => void;
 
 export type HandlerPayloadMap<TUnion extends { type: string; payload: unknown }> = {
-  [TType in MessageType<TUnion>]?: PayloadFor<TUnion, TType>;
+  [TType in MessageType<TUnion>]: PayloadFor<TUnion, TType>;
 };
 
 export type HandlerMap<TUnion extends { type: string; payload: unknown }> = {
-  [TType in MessageType<TUnion>]?: (payload: PayloadFor<TUnion, TType>) => void;
+  [TType in MessageType<TUnion>]: (payload: PayloadFor<TUnion, TType>) => void;
 };
 
 export function createHandlerMap<TUnion extends { type: string; payload: unknown }>(

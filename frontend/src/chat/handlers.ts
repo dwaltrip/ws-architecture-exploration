@@ -23,6 +23,11 @@ const chatHandlers: ChatHandlerMap = {
     // const { roomId, userId, isTyping } = payload;
     // updateIsTypingStatus(roomId, userId, isTyping);
   },
+  'chat:users-in-room-update': (payload) => {
+    const { roomId, userIds } = payload;
+    // const { setUsersInRoom } = chatActions;
+    // setUsersInRoom(roomId, userIds);
+  }
 };
 
 let handlersRegistered = false;

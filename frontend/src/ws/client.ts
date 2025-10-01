@@ -27,7 +27,7 @@ export class WSClient<
   TOutgoing extends { type: string; payload: unknown }
 > {
   private socket?: WebSocket;
-  private handlers: HandlerMap<TIncoming> = {};
+  private handlers: HandlerMap<TIncoming> | null = null;
   private reconnectAttempts = 0;
   private readonly url: string;
   private readonly options: WSClientOptions;
@@ -88,14 +88,26 @@ export class WSClient<
 
   registerHandlers(handlerMap: HandlerMap<TIncoming>) {
     let type: keyof typeof handlerMap;
-    for (type in handlerMap) {
-      if (type in this.handlers) {
-        console.error(`Handler for message type "${type}" already exists`);
-      }
-      else {
-        this.handlers[type] = handlerMap[type];
+    if (this.handlers === null) {
+      this.handlers = { ...handlerMap };
+    }
+    else {
+      for (type in handlerMap) {
+        if (type in this.handlers) {
+          console.error(`Handler for message type "${type}" already exists`);
+        }
+        else {
+          this.handlers[type] = handlerMap[type];
+        }
       }
     }
+  }
+
+  getHandler(type: keyof HandlerMap<TIncoming>) {
+    if (!this.handlers) {
+      return undefined;
+    }
+    return this.handlers[type];
   }
 
   private attachSocketListeners(socket: WebSocket) {
@@ -190,10 +202,7 @@ export class WSClient<
   }
 
   private dispatch(message: TIncoming) {
-    // -----------------------------------
-    // TODO: can we get rid of this cast?
-    // -----------------------------------
-    const handler = this.handlers[message.type as keyof HandlerMap<TIncoming>];
+    const handler = this.getHandler(message.type);
     if (!handler) {
       console.error(`No handler registered for message type "${message.type}"`);
       return;

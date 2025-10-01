@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
-import type { ChatMessage, ChatRoom, UserId } from '../../../common/src/types/db';
+import { areSetsEqual } from '../../../common/src/utils/set-utils';
+import type { ChatMessage, ChatRoom, ChatRoomId, UserId } from '../../../common/src/types/db';
 
 interface ChatState {
   messages: ChatMessage[];
@@ -8,10 +9,13 @@ interface ChatState {
   availableRooms: ChatRoom[];
   usersWhoAreTyping: UserId[];
 
+  usersByRoom: Record<ChatRoomId, Set<UserId>>;
+
   addMessage: (message: ChatMessage) => void;
   setCurrentRoom: (room: ChatRoom) => void;
   setAvailableRooms: (rooms: ChatRoom[]) => void;
   setUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
+  updateUsersForRoom: (roomId: ChatRoomId, userIds: UserId[]) => void;
 }
 
 // const useChatStore = create<ChatState>((set, get) => ({
@@ -20,6 +24,7 @@ const useChatStore = create<ChatState>((set) => ({
   currentRoom: null,
   availableRooms: [],
   usersWhoAreTyping: [],
+  usersByRoom: {},
 
   addMessage: (message) => {
     set((state) => ({ messages: [...state.messages, message] }));
@@ -45,6 +50,20 @@ const useChatStore = create<ChatState>((set) => ({
       return {};
     });
   },
+
+  updateUsersForRoom: (roomId, userIds) => set((state) => {
+    const newUsers = new Set(userIds);
+    const currentUsers = state.usersByRoom[roomId] || new Set<UserId>();
+    if (areSetsEqual(newUsers, currentUsers)) {
+      return {};
+    }
+    return {
+      usersByRoom: {
+        ...state.usersByRoom,
+        [roomId]: newUsers
+      }
+    };
+  }),
 }));
 
 const chatStore = useChatStore;
