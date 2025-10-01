@@ -1,18 +1,7 @@
-import type {
-  HandlerMap,
-  MessageType,
-  PayloadFor,
+import {
+  type HandlerMap,
 } from '../../../common/src/utils/message-helpers';
 import { createTimeout, type Timeout } from '../utils/create-timeout';
-
-export type ServerMessageHandler<
-  TIncoming extends { type: string; payload: unknown },
-  TType extends MessageType<TIncoming>
-> = (payload: PayloadFor<TIncoming, TType>) => void;
-
-type HandlerRegistry<
-  TIncoming extends { type: string; payload: unknown }
-> = Map<MessageType<TIncoming>, Set<ServerMessageHandler<TIncoming, any>>>;
 
 export interface WSClientOptions {
   maxReconnectAttempts: number;
@@ -38,7 +27,7 @@ export class WSClient<
   TOutgoing extends { type: string; payload: unknown }
 > {
   private socket?: WebSocket;
-  private handlers: HandlerRegistry<TIncoming> = new Map();
+  private handlers: HandlerMap<TIncoming> = {};
   private reconnectAttempts = 0;
   private readonly url: string;
   private readonly options: WSClientOptions;
@@ -97,36 +86,16 @@ export class WSClient<
     socket.send(this.encode(message));
   }
 
-  on<TType extends MessageType<TIncoming>>(
-    type: TType,
-    handler: ServerMessageHandler<TIncoming, TType>
-  ) {
-    const registry = this.handlers.get(type) ?? new Set();
-    registry.add(handler as ServerMessageHandler<TIncoming, any>);
-    this.handlers.set(type, registry);
-
-    return () => this.off(type, handler);
-  }
-
-  off<TType extends MessageType<TIncoming>>(
-    type: TType,
-    handler: ServerMessageHandler<TIncoming, TType>
-  ) {
-    const registry = this.handlers.get(type);
-    if (!registry) {
-      return;
-    }
-
-    registry.delete(handler as ServerMessageHandler<TIncoming, any>);
-    if (registry.size === 0) {
-      this.handlers.delete(type);
-    }
-  }
-
   registerHandlers(handlerMap: HandlerMap<TIncoming>) {
-    (Object.keys(handlerMap) as Array<MessageType<TIncoming>>).forEach((type) => {
-      this.on(type, handlerMap[type]);
-    });
+    let type: keyof typeof handlerMap;
+    for (type in handlerMap) {
+      if (type in this.handlers) {
+        console.error(`Handler for message type "${type}" already exists`);
+      }
+      else {
+        this.handlers[type] = handlerMap[type];
+      }
+    }
   }
 
   private attachSocketListeners(socket: WebSocket) {
@@ -221,15 +190,20 @@ export class WSClient<
   }
 
   private dispatch(message: TIncoming) {
-    const handlers = this.handlers.get(message.type);
-    handlers?.forEach((handler) => {
-      try {
-        // TODO: Improve type constraints to avoid 'as never' cast
-        handler(message.payload as never);
-      } catch (error) {
-        console.error(`Error in handler for message type "${message.type}":`, error);
-      }
-    });
+    // -----------------------------------
+    // TODO: can we get rid of this cast?
+    // -----------------------------------
+    const handler = this.handlers[message.type as keyof HandlerMap<TIncoming>];
+    if (!handler) {
+      console.error(`No handler registered for message type "${message.type}"`);
+      return;
+    }
+    try {
+      // TODO: Improve type constraints to avoid 'as never' cast
+      handler(message.payload as never);
+    } catch (error) {
+      console.error(`Error in handler for message type "${message.type}":`, error);
+    }
   }
 
   private flushPendingMessages() {
