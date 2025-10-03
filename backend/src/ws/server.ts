@@ -124,6 +124,7 @@ function isSystemRoomMessage(message: ClientMessage): message is SystemClientMes
   return message.type === 'system:room-join' || message.type === 'system:room-leave';
 }
 
+// TODO: move this out into "special" "system" domain on backend
 function handleSystemRoomMessage(
   message: SystemClientMessage,
   ctx: HandlerContext
@@ -139,6 +140,13 @@ function handleSystemRoomMessage(
 
       console.log(`User ${ctx.userId} joining room ${normalizedRoomId}`);
       ctx.rooms.join(normalizedRoomId);
+      // --------------------------------------
+      // TODO: message builder / creator fn??
+      // --------------------------------------
+      ctx.broadcastToRoom((normalizedRoomId), {
+        type: 'system:user-joined',
+        payload: { userId: ctx.userId, roomId: normalizedRoomId },
+      });
       return;
     }
 

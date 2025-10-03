@@ -22,23 +22,16 @@ export type ChatTypingBroadcastPayload = {
   isTyping: boolean;
 };
 
-export type ChatUsersInRoomUpdatePayload = {
-  roomId: string;
-  userIds: string[];
-}
-
 export type ChatServerPayloadMap = {
   'chat:message': ChatMessageBroadcastPayload;
   'chat:edited': ChatMessageEditedPayload;
   'chat:typing': ChatTypingBroadcastPayload;
-  'chat:users-in-room-update': ChatUsersInRoomUpdatePayload;
 };
 
 export const chatServerMessageTypes = [
   'chat:message',
   'chat:edited',
   'chat:typing',
-  'chat:users-in-room-update',
 ] as const;
 
 export type ChatServerMessageType = keyof ChatServerPayloadMap;
