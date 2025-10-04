@@ -8,7 +8,7 @@
 
 - **Uses builder pattern** instead of runtime validator (compile-time completeness check via `satisfies`)
 - **Breaks circular dependency** with minimal DI in ws-effects only (no other modules need changes)
-- **Removes runtime validator** (TypeScript enforces completeness at compile time)
+- **Replaces runtime validator with compile-time coverage plus a small dev-only assertion** so we still fail loudly if TypeScript gets bypassed
 - **Fixes critical bugs** discovered in review (ServerMessageType union, useWsClient hook)
 - **Simplifies** by removing unnecessary abstractions (ChatProvider, createDomainHandlerMap helper)
 
@@ -118,6 +118,10 @@ export function initChatWsEffects(client: AppWsClient): void {
   _client = client;
 }
 
+export function resetChatWsEffectsForTests(): void {
+  _client = null;
+}
+
 export const chatWsEffects: ChatWsEffects = {
   postNewMessage(roomId: string, text: string) {
     if (!_client) {
@@ -150,6 +154,10 @@ let _client: AppWsClient | null = null;
 
 export function initSystemWsEffects(client: AppWsClient): void {
   _client = client;
+}
+
+export function resetSystemWsEffectsForTests(): void {
+  _client = null;
 }
 
 function normalizeRoomId(roomId: string) {
@@ -185,7 +193,7 @@ export const systemWsEffects: SystemWsEffects = {
 };
 ```
 
-**Why:** Breaking the circular dependency allows us to import handlers at bootstrap time and pass them to WSClient constructor.
+**Why:** Breaking the circular dependency allows us to import handlers at bootstrap time and pass them to WSClient constructor. The reset helpers line up with `resetWsInitializationForTests()` so test suites can restore both the client and its DI wiring between runs.
 
 ---
 
@@ -263,6 +271,8 @@ export const systemHandlers = {
 
 **File:** `frontend/src/ws/bootstrap.ts` (new file)
 
+This module also defines a tiny `assertHandlersInitializedInDev` helper that only runs in development builds to confirm the merged handler map made it into the client even when TypeScript coverage is skipped.
+
 ```typescript
 import type { AppIncomingMessage, AppOutgoingMessage } from './types';
 import type { HandlerMap } from '../../../common/src/utils/message-helpers';
@@ -270,8 +280,8 @@ import type { HandlerMap } from '../../../common/src/utils/message-helpers';
 import { WSClient } from './client';
 import { chatHandlers } from '../chat/handlers';
 import { systemHandlers } from '../system/handlers';
-import { initChatWsEffects } from '../chat/ws-effects';
-import { initSystemWsEffects } from '../system/ws-effects';
+import { initChatWsEffects, resetChatWsEffectsForTests } from '../chat/ws-effects';
+import { initSystemWsEffects, resetSystemWsEffectsForTests } from '../system/ws-effects';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
 
@@ -298,6 +308,10 @@ export function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessa
   initChatWsEffects(wsClient);
   initSystemWsEffects(wsClient);
 
+  if (import.meta.env.DEV) {
+    assertHandlersInitializedInDev(wsClient, allHandlers);
+  }
+
   // Connect once
   wsClient.connect();
 
@@ -315,13 +329,29 @@ export function getWsClient(): WSClient<AppIncomingMessage, AppOutgoingMessage> 
 export function resetWsInitializationForTests(): void {
   wsClient?.disconnect();
   wsClient = null;
+  resetChatWsEffectsForTests();
+  resetSystemWsEffectsForTests();
+}
+
+function assertHandlersInitializedInDev(
+  client: WSClient<AppIncomingMessage, AppOutgoingMessage>,
+  expected: HandlerMap<AppIncomingMessage>,
+): void {
+  (Object.keys(expected) as Array<keyof HandlerMap<AppIncomingMessage>>).forEach((type) => {
+    if (!client.getHandler(type)) {
+      throw new Error(`Expected WebSocket handler for message type "${String(type)}" to be registered`);
+    }
+  });
 }
 ```
+
+`resetWsInitializationForTests()` now clears the client singleton and the ws-effects DI hooks, so Jest/Playwright suites can spin the bootstrap up and down without sharing state.
 
 **Why:**
 - Single source of truth for initialization
 - `satisfies HandlerMap<AppIncomingMessage>` enforces compile-time completeness
 - Clear initialization order: handlers → client → effects → connect
+- `assertHandlersInitializedInDev` keeps a dev-time tripwire for cases where TypeScript coverage is bypassed (dynamic imports, incremental builds, etc.)
 
 ---
 
@@ -362,6 +392,8 @@ function App() {
 
 export { App };
 ```
+
+_React runs parent effects before child effects, so `ChatContainer` will only see a configured client. The `_client` guard inside each ws-effects module stays as a defensive fallback in case that sequencing ever changes._
 
 **Why:** ChatProvider is no longer needed; direct initialization is clearer.
 
@@ -425,7 +457,7 @@ grep -r "registerChatHandlers\|registerSystemHandlers" frontend/src
 
 - **Strict Mode double-invocation**: Handled by `wsClient` null check in bootstrap
 - **New domains**: Must export handlers const and init function for ws-effects; bootstrap merges them
-- **Tests**: Use `resetWsInitializationForTests()` to clear singleton between tests
+- **Tests**: Use `resetWsInitializationForTests()` (which now calls `resetChatWsEffectsForTests()` / `resetSystemWsEffectsForTests()`) so each test starts without lingering DI
 - **Unknown message types**: Existing `dispatch` behavior preserved (logs error, client.ts:207)
 
 ## Validation
@@ -439,6 +471,13 @@ grep -r "registerChatHandlers\|registerSystemHandlers" frontend/src
 1. Add `'chat:deleted'` to `chatServerMessageTypes` array but not to `ChatServerPayloadMap`
 2. Run `npm run build`
 3. Should get TypeScript error on `_checkChatMessageTypesComplete`
+
+**Runtime assertion test (dev only):**
+1. Temporarily comment out the `initializeWsApp()` call in `App.tsx`
+2. Run `npm run dev`
+3. Navigating to the app should throw the `assertHandlersInitializedInDev` error, proving the guard is wired.
+
+_Test suites that spin bootstrap up multiple times should call `resetWsInitializationForTests()` (and, if they interact with effects directly, the exported `reset*WsEffectsForTests()` helpers) in their setup/teardown hooks._
 
 ## Open Questions
 
