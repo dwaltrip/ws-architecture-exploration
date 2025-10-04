@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 
-import type { User } from "../../../../common/src/types/db";
-import { useChatStore } from "../../chat/chat-store";
+import { selectUsersInCurrentRoom, useChatStore } from "../../chat/chat-store";
 import { useChatActions } from "../../chat/use-chat-actions";
 
-const DUMMY_USERS: User[] = [
-  { id: '1', name: 'Alice' },
-  { id: '2', name: 'Bob' },
-  { id: '3', name: 'Charlie' },
-];
 
 function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
@@ -24,7 +18,8 @@ function ChatContainer() {
     setCurrentRoom,
   } = useChatStore();
 
-  const usersInCurrentRoom: User[] = DUMMY_USERS; // TODO: derive from store
+  const usersInCurrentRoom = Array.from(useChatStore(selectUsersInCurrentRoom))
+
 
   useEffect(() => {
     if (!currentRoom) {
@@ -92,8 +87,9 @@ function ChatContainer() {
 
         <h4>Users</h4>
         <ul>
-          {usersInCurrentRoom.map((user) => (
-            <li key={user.id}>{user.name}</li>
+          {/* TODO: use actual Users w/ usernames */}
+          {usersInCurrentRoom.map((userId) => (
+            <li key={userId}>{userId}</li>
           ))}
         </ul>
       </div>

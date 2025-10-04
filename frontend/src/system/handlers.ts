@@ -8,6 +8,20 @@ type ServerHandlerMap = HandlerMap<SystemServerMessage>;
 
 const systemHandlers: ServerHandlerMap = {
   'system:users-for-room': (payload) => {
-    systemActions.setUsersForRoom(payload.roomId, payload.userIds);
+    systemActions.setUsersForRoom(payload.roomId, payload.users);
   }
 };
+
+let handlersRegistered = false;
+
+function registerSystemHandlers(): void {
+  if (handlersRegistered) {
+    return;
+  }
+
+  getWsClient().registerHandlers(systemHandlers);
+  handlersRegistered = true;
+}
+
+export type { ServerHandlerMap };
+export { systemHandlers, registerSystemHandlers };

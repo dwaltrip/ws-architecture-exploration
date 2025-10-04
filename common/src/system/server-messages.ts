@@ -1,8 +1,9 @@
+import type { User } from '../types/db';
 import type { MessageUnion } from '../utils/message-helpers';
 
 export type SystemUsersForRoomPayload = {
   roomId: string;
-  userIds: string[];
+  users: User[];
 }
 
 export type SystemServerPayloadMap = {

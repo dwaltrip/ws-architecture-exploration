@@ -12,14 +12,16 @@ import type {
   SystemClientMessageType,
   SystemClientPayloadMap,
 } from './system/client-messages';
+import { 
+  SystemServerPayloadMap,
+} from '../src/system/server-messages';
 
 export type ClientMessageMap =
   & ChatClientPayloadMap
   & SystemClientPayloadMap;
 // export type ClientMessageMap = ChatClientPayloadMap & SomeOtherDomainClientPayloadMap;
 
-export type ServerMessageMap = ChatServerPayloadMap;
-// export type ServerMessageMap = ChatServerPayloadMap & SomeOtherDomainServerPayloadMap;
+export type ServerMessageMap = ChatServerPayloadMap & SystemServerPayloadMap;
 
 export type ClientMessage = MessageUnion<ClientMessageMap>;
 export type ServerMessage = MessageUnion<ServerMessageMap>;
