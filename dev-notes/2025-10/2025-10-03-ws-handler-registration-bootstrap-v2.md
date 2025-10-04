@@ -2,19 +2,21 @@
 
 **Date:** 2025-10-03
 **Status:** Draft for Review
-**Replaces:** v1 plan (same date)
+**Replaces:** earlier bootstrap explorations
 
-## Key Changes from v1
+## Overview
 
-- **Uses builder pattern** instead of runtime validator (compile-time completeness check via `satisfies`)
-- **Breaks circular dependency** with minimal DI in ws-effects only (no other modules need changes)
-- **Replaces runtime validator with compile-time coverage plus a small dev-only assertion** so we still fail loudly if TypeScript gets bypassed
-- **Fixes critical bugs** discovered in review (ServerMessageType union, useWsClient hook)
-- **Simplifies** by removing unnecessary abstractions (ChatProvider, createDomainHandlerMap helper)
+- **Goal:** centralize WebSocket bootstrap so every incoming message type is handled before connecting while keeping domains modular.  
+- **Why now:** current Chat bootstrap connects the socket twice under React Strict Mode, system handlers never register, and the shared `ServerMessageType` union misses system traffic entirely.  
+- **Approach:** build a single handler map at bootstrap time, inject the client into send-side effects, and lean on TypeScript (`satisfies`) plus a dev-only runtime assertion to guarantee coverage.  
 
-## Background
+## Key Outcomes
 
-Same as v1: Earlier exploration of consolidated handler registration revealed type friction, centralization concerns, and lifecycle confusion with React Strict Mode. This v2 plan addresses those issues plus critical bugs found during technical review.
+- **Compile-time coverage** by constructing the merged handler map with `satisfies HandlerMap<AppIncomingMessage>`.  
+- **Minimal DI** limited to ws-effects modules to break the current circular dependency.  
+- **Lifecycle clarity** with a single `initializeWsApp()` responsible for handler wiring, client creation, and connection.  
+- **Runtime safety net** via a small dev-only assertion that the handlers actually reach the client.  
+- **Simplified surface area**: delete `ChatProvider`, `create-client.ts`, domain `register*Handlers()` helpers, and unused `useWsClient` hook.  
 
 ## Context
 
@@ -30,7 +32,7 @@ Same as v1: Earlier exploration of consolidated handler registration revealed ty
 - **Builder pattern with compile-time safety.** Bootstrap merges all domain handler maps and passes them to WSClient constructor. TypeScript's `satisfies` operator enforces completeness at compile time.
 - **Break circular dependency via minimal DI.** Only ws-effects modules need DI (accept client as parameter). Handlers, actions, and stores remain unchanged.
 - **App-level bootstrap owns lifecycle.** New `initializeWsApp()` in `frontend/src/ws/bootstrap.ts` creates the client with all handlers, wires up ws-effects, and connects once.
-- **No runtime validator needed.** Compile-time `satisfies` check fails the build if any expected handler is missing.
+- **No standalone runtime validator.** Compile-time `satisfies` handles coverage; a dev-only assertion in bootstrap trips if the client misses any handler at runtime.
 - **Compile-time array sync.** Type-level assertion ensures message type arrays stay in sync with payload maps.
 - **Remove conflicting abstractions.** Delete `ChatProvider` and `useWsClient` hook (no longer needed).
 
@@ -88,6 +90,8 @@ const _checkChatMessageTypesComplete: AssertEqual<
   typeof chatServerMessageTypes[number]
 > = true;
 ```
+
+In `system/server-messages.ts`, mirror the same pattern with `_checkSystemMessageTypesComplete`, substituting the system payload map and message array.
 
 **Why:** This fails compilation if someone adds a message type to the payload map but forgets to update the array, or vice versa. Zero runtime cost.
 
@@ -193,7 +197,7 @@ export const systemWsEffects: SystemWsEffects = {
 };
 ```
 
-**Why:** Breaking the circular dependency allows us to import handlers at bootstrap time and pass them to WSClient constructor. The reset helpers line up with `resetWsInitializationForTests()` so test suites can restore both the client and its DI wiring between runs.
+**Why:** Breaking the circular dependency allows us to import handlers at bootstrap time and pass them to WSClient constructor. Remove the old `handlersRegistered` flag and `register*Handlers()` exports entirely—bootstrap owns registration now. The reset helpers line up with `resetWsInitializationForTests()` so test suites can restore both the client and its DI wiring between runs.
 
 ---
 
@@ -346,6 +350,8 @@ function assertHandlersInitializedInDev(
 ```
 
 `resetWsInitializationForTests()` now clears the client singleton and the ws-effects DI hooks, so Jest/Playwright suites can spin the bootstrap up and down without sharing state.
+
+> Update `frontend/src/ws/index.ts` to re-export `initializeWsApp`, `getWsClient`, and (optionally) `resetWsInitializationForTests()` alongside any existing exports so downstream code keeps a single import surface.
 
 **Why:**
 - Single source of truth for initialization
