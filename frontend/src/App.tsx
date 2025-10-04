@@ -1,12 +1,14 @@
+import { useEffect } from 'react';
 import { ChatContainer } from './pages/chat-page/chat-container';
-import { ChatProvider } from './chat/provider';
+import { initializeWsApp } from './ws/bootstrap';
 
 function App() {
-  return (
-    <ChatProvider>
-      <ChatContainer />
-    </ChatProvider>
-  );
+  useEffect(() => {
+    initializeWsApp();
+    // No cleanup - app-level singleton lifecycle
+  }, []);
+
+  return <ChatContainer />;
 }
 
 export { App };

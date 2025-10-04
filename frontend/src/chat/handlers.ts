@@ -1,11 +1,9 @@
 import type { ChatServerMessage, HandlerMap } from '../../../common/src';
-
-import { getWsClient } from '../ws/create-client';
 import { chatActions } from './actions';
 
 type ChatHandlerMap = HandlerMap<ChatServerMessage>;
 
-const chatHandlers: ChatHandlerMap = {
+export const chatHandlers = {
   'chat:message': (payload) => {
     const { id, text, userId } = payload;
     const { addReceivedMessage } = chatActions;
@@ -23,18 +21,4 @@ const chatHandlers: ChatHandlerMap = {
     // const { roomId, userId, isTyping } = payload;
     // updateIsTypingStatus(roomId, userId, isTyping);
   },
-};
-
-let handlersRegistered = false;
-
-function registerChatHandlers(): void {
-  if (handlersRegistered) {
-    return;
-  }
-
-  getWsClient().registerHandlers(chatHandlers);
-  handlersRegistered = true;
-}
-
-export type { ChatHandlerMap };
-export { chatHandlers, registerChatHandlers };
+} as const satisfies ChatHandlerMap;

@@ -28,12 +28,6 @@ export type ChatServerPayloadMap = {
   'chat:typing': ChatTypingBroadcastPayload;
 };
 
-export const chatServerMessageTypes = [
-  'chat:message',
-  'chat:edited',
-  'chat:typing',
-] as const;
-
 export type ChatServerMessageType = keyof ChatServerPayloadMap;
 
 export type ChatServerMessage = MessageUnion<ChatServerPayloadMap>;
