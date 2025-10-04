@@ -1,33 +1,31 @@
 import { useEffect, useState } from "react";
 
-import { selectUsersInCurrentRoom, useChatStore } from "../../chat/chat-store";
+import { useChatStore } from "../../chat/chat-store";
+import { useSystemStore, selectUsersInRoom } from "../../system/system-store";
 import { useChatActions } from "../../chat/use-chat-actions";
 
 
 function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
 
-  const { joinRoom, sendMessage } = useChatActions();
+  const { joinGeneralRoom, sendMessage } = useChatActions();
 
   const {
     messages,
     currentRoom,
     availableRooms,
     // usersWhoAreTyping,
-
-    setCurrentRoom,
   } = useChatStore();
 
-  const usersInCurrentRoom = Array.from(useChatStore(selectUsersInCurrentRoom))
-
+  const usersInCurrentRoom = Array.from(useSystemStore(selectUsersInRoom(currentRoom?.id || '')));
+  console.log('usersInCurrentRoom', usersInCurrentRoom);
 
   useEffect(() => {
     if (!currentRoom) {
       console.log('No current room, joining general');
-      joinRoom('general');
-      setCurrentRoom({ id: 'general', name: 'General' });
+      joinGeneralRoom();
     }
-  }, [currentRoom, setCurrentRoom]);
+  }, [currentRoom, joinGeneralRoom]);
 
   const postMessage = () => {
     console.log('Posting message', { newMessageText, currentRoom });
@@ -35,7 +33,6 @@ function ChatContainer() {
     setNewMessageText('');
   }
   const isSendDisabled = !newMessageText.trim() || !currentRoom;
-  console.log('isSendDisabled', isSendDisabled);
 
   return (
     <div className="chat-container">
@@ -78,7 +75,6 @@ function ChatContainer() {
             <li
               key={room.id}
               className={currentRoom?.id === room.id ? 'active' : ''}
-              onClick={() => joinRoom(room.id)}
             >
               {room.name}
             </li>
@@ -88,8 +84,8 @@ function ChatContainer() {
         <h4>Users</h4>
         <ul>
           {/* TODO: use actual Users w/ usernames */}
-          {usersInCurrentRoom.map((userId) => (
-            <li key={userId}>{userId}</li>
+          {usersInCurrentRoom.map((user) => (
+            <li key={user.id}>{user.name}</li>
           ))}
         </ul>
       </div>

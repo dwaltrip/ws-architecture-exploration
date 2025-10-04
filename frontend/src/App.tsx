@@ -1,13 +1,12 @@
-import { useEffect } from 'react';
 import { ChatContainer } from './pages/chat-page/chat-container';
-import { initializeWsApp } from './ws/bootstrap';
+import { useInitializeWsApp } from './ws';
 
 function App() {
-  useEffect(() => {
-    initializeWsApp();
-    // No cleanup - app-level singleton lifecycle
-  }, []);
+  const isInitialized = useInitializeWsApp();
 
+  if (!isInitialized) {
+    return <div>Loading...</div>;
+  }
   return <ChatContainer />;
 }
 

@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 
 import { areSetsEqual } from '../../../common/src/utils/set-utils';
-import type { ChatRoom, ChatRoomId, UserId } from '../../../common/src/types/db';
+import type { ChatRoomId, User } from '../../../common/src/types/db';
 
 interface SystemState {
-  usersByRoom: Record<ChatRoomId, Set<UserId>>;
+  usersByRoom: Record<ChatRoomId, User[]>
 
   actions: {
-    updateUsersForRoom: (roomId: ChatRoomId, userIds: UserId[]) => void;
+    updateUsersForRoom: (roomId: ChatRoomId, users: User[]) => void;
   },
 }
 
@@ -15,16 +15,19 @@ const useSystemStore = create<SystemState>((set) => ({
   usersByRoom: {},
 
   actions: {
-    updateUsersForRoom: (roomId, userIds) => set((state) => {
-      const newUsers = new Set(userIds);
-      const currentUsers = state.usersByRoom[roomId] || new Set<UserId>();
-      if (areSetsEqual(newUsers, currentUsers)) {
+    updateUsersForRoom: (roomId, users) => set((state) => {
+      const currentUsers = state.usersByRoom[roomId] || [];
+      const noChange = areSetsEqual(
+        new Set(users.map(u => u.id)),
+        new Set(currentUsers.map(u => u.id)),
+      );
+      if (noChange) {
         return {};
       }
       return {
         usersByRoom: {
           ...state.usersByRoom,
-          [roomId]: newUsers
+          [roomId]: users,
         }
       };
     }),
@@ -39,11 +42,15 @@ function getSystemStore(): typeof systemStore {
 
 // --------- selectors ---------
 
+// Has to be the same object every time to avoid unnecessary re-renders
+const EMPTY_SET: User[] = [];
+
 function selectUsersInRoom(roomId: ChatRoomId) {
-  return (state: SystemState): Set<UserId> => {
+  return (state: SystemState): User[] => {
     const users = state.usersByRoom[roomId];
     if (!users) {
-      console.warn(`Roomm ID ${roomId} not found in usersByRoom map`);
+      console.debug(`Room ID ${roomId} not found in usersByRoom map`);
+      return EMPTY_SET;
     }
     return users;
   };

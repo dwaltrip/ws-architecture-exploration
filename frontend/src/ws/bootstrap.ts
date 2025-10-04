@@ -6,12 +6,13 @@ import { chatHandlers } from '../chat/handlers';
 import { systemHandlers } from '../system/handlers';
 import { initChatWsEffects, resetChatWsEffectsForTests } from '../chat/ws-effects';
 import { initSystemWsEffects, resetSystemWsEffectsForTests } from '../system/ws-effects';
+import { useEffect, useState } from 'react';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
 
 let wsClient: WSClient<AppIncomingMessage, AppOutgoingMessage> | null = null;
 
-export function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
+function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   if (wsClient) {
     return wsClient;
   }
@@ -42,7 +43,7 @@ export function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessa
   return wsClient;
 }
 
-export function getWsClient(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
+function getWsClient(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   if (!wsClient) {
     throw new Error('WS client not initialized. Call initializeWsApp() first.');
   }
@@ -67,3 +68,17 @@ function assertHandlersInitializedInDev(
     }
   });
 }
+
+function useInitializeWsApp(): boolean {
+  const [isInitialized, setIsInitialized] = useState(() => wsClient !== null);
+
+  useEffect(() => {
+    initializeWsApp();
+    setIsInitialized(true);
+    // No cleanup - app-level singleton lifecycle
+  }, []);
+
+  return isInitialized;
+}
+
+export { getWsClient, useInitializeWsApp };

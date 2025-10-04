@@ -143,9 +143,13 @@ function handleSystemRoomMessage(
       // --------------------------------------
       // TODO: message builder / creator fn??
       // --------------------------------------
+      const userIds = Array.from(ctx.rooms.getMembers(normalizedRoomId) || []);
       ctx.broadcastToRoom((normalizedRoomId), {
-        type: 'system:user-joined',
-        payload: { userId: ctx.userId, roomId: normalizedRoomId },
+        type: 'system:users-for-room',
+        payload: {
+          roomId: normalizedRoomId,
+          users: userIds.map((id) => ({ id, name: 'User ' + id })),
+        },
       });
       return;
     }

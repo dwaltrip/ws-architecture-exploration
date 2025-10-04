@@ -1,2 +1,2 @@
 export * from './client';
-export { initializeWsApp, getWsClient, resetWsInitializationForTests } from './bootstrap';
+export { getWsClient, useInitializeWsApp, resetWsInitializationForTests } from './bootstrap';
