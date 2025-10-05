@@ -10,9 +10,6 @@ const ws = createWsRef('Chat');
 
 const chatWsEffects: ChatWsEffects = {
   postNewMessage(roomId: string, text: string) {
-    if (!text.trim()) {
-      return;
-    }
     ws.getClient().send(createSendMessage(text, roomId));
   },
 

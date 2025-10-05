@@ -15,6 +15,9 @@ interface ChatActions {
 
 const chatActions: ChatActions = {
   sendMessage(roomId: string, text: string) {
+    if (!text.trim()) {
+      return;
+    }
     chatWsEffects.postNewMessage(roomId, text);
   },
 
