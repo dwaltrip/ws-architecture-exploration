@@ -18,5 +18,5 @@ function createChatMessageBuilder<TType extends keyof ChatServerPayloadMap & str
 export const ChatMessageBuilders = {
   message: createChatMessageBuilder('chat:message'),
   edited: createChatMessageBuilder('chat:edited'),
-  typing: createChatMessageBuilder('chat:typing'),
+  typing: createChatMessageBuilder('chat:is-typing-in-room'),
 };

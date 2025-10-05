@@ -17,15 +17,13 @@ export type ChatMessageEditedPayload = {
 
 export type ChatTypingBroadcastPayload = {
   roomId: string;
-  userId: string;
-  username: string;
-  isTyping: boolean;
+  userIds: string[];
 };
 
 export type ChatServerPayloadMap = {
   'chat:message': ChatMessageBroadcastPayload;
   'chat:edited': ChatMessageEditedPayload;
-  'chat:typing': ChatTypingBroadcastPayload;
+  'chat:is-typing-in-room': ChatTypingBroadcastPayload;
 };
 
 export type ChatServerMessageType = keyof ChatServerPayloadMap;

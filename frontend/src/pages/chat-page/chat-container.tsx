@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 
 import { useChatStore } from "../../chat/chat-store";
 import { useSystemStore, selectUsersInRoom } from "../../system/system-store";
-import { useChatActions } from "../../chat/use-chat-actions";
+import { useChatActions } from "../../chat/actions";
+import { useTypingDetection } from "../../chat/use-typing-detection";
 
 
 function ChatContainer() {
@@ -14,11 +15,26 @@ function ChatContainer() {
     messages,
     currentRoom,
     availableRooms,
-    // usersWhoAreTyping,
+    usersTypingByRoom,
   } = useChatStore();
 
   const usersInCurrentRoom = Array.from(useSystemStore(selectUsersInRoom(currentRoom?.id || '')));
   console.log('usersInCurrentRoom', usersInCurrentRoom);
+
+  const { handleInputChange: handleTyping, stopTyping } = useTypingDetection({
+    roomId: currentRoom?.id || null,
+  });
+
+  // Get typing indicators for current room
+  const typingUserIds = currentRoom ? (usersTypingByRoom[currentRoom.id] || []) : [];
+  const typingUsers = usersInCurrentRoom.filter(user => typingUserIds.includes(user.id));
+  const typingText = typingUsers.length > 0
+    ? typingUsers.length === 1
+      ? `${typingUsers[0].name} is typing...`
+      : typingUsers.length === 2
+        ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
+        : `${typingUsers[0].name}, ${typingUsers[1].name}, and ${typingUsers.length - 2} other${typingUsers.length - 2 > 1 ? 's' : ''} are typing...`
+    : '';
 
   useEffect(() => {
     if (!currentRoom) {
@@ -27,10 +43,17 @@ function ChatContainer() {
     }
   }, [currentRoom, joinGeneralRoom]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setNewMessageText(text);
+    handleTyping(text);
+  };
+
   const postMessage = () => {
     console.log('Posting message', { newMessageText, currentRoom });
     sendMessage(currentRoom?.id || '', newMessageText);
     setNewMessageText('');
+    stopTyping();
   }
   const isSendDisabled = !newMessageText.trim() || !currentRoom;
 
@@ -51,15 +74,21 @@ function ChatContainer() {
           ))}
         </div>
 
+        {typingText && (
+          <div className="typing-indicator" style={{ padding: '8px', fontStyle: 'italic', color: '#666' }}>
+            {typingText}
+          </div>
+        )}
+
         <div className="chat-input">
           <input
             type="text"
             placeholder="Type a message..."
             value={newMessageText}
-            onChange={(e) => setNewMessageText(e.target.value)}
+            onChange={handleInputChange}
           />
 
-          <button 
+          <button
             onClick={() => postMessage()}
             disabled={isSendDisabled}
           >

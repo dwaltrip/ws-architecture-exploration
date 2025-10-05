@@ -6,12 +6,13 @@ interface ChatState {
   messages: ChatMessage[];
   currentRoom: ChatRoom | null;
   availableRooms: ChatRoom[];
-  usersWhoAreTyping: UserId[];
+  usersTypingByRoom: Record<string, UserId[]>; // roomId -> userId[]
 
   addMessage: (message: ChatMessage) => void;
   setCurrentRoom: (room: ChatRoom) => void;
   setAvailableRooms: (rooms: ChatRoom[]) => void;
-  setUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
+  // updateUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
+  setUsersTypingInRoom: (roomId: string, userIds: string[]) => void;
 }
 
 // const useChatStore = create<ChatState>((set, get) => ({
@@ -19,7 +20,7 @@ const useChatStore = create<ChatState>((set) => ({
   messages: [],
   currentRoom: null,
   availableRooms: [],
-  usersWhoAreTyping: [],
+  usersTypingByRoom: {},
 
   addMessage: (message) => {
     set((state) => ({ messages: [...state.messages, message] }));
@@ -29,22 +30,9 @@ const useChatStore = create<ChatState>((set) => ({
 
   setAvailableRooms: (rooms) => set({ availableRooms: rooms }),
 
-  setUserTypingStatus: (userId, isTyping) => {
-    set((state) => {
-      const isAlreadyTyping = state.usersWhoAreTyping.includes(userId);
-      if (isTyping && !isAlreadyTyping) {
-        return {
-          usersWhoAreTyping: [...state.usersWhoAreTyping, userId]
-        };
-      }
-      else if (!isTyping && isAlreadyTyping) {
-        return {
-          usersWhoAreTyping: state.usersWhoAreTyping.filter((id) => id !== userId)
-        };
-      }
-      return {};
-    });
-  }, 
+  setUsersTypingInRoom: (roomId, userIds) => set((state) => ({
+    usersTypingByRoom: { ...state.usersTypingByRoom, [roomId]: userIds }
+  })),
 }));
 
 const chatStore = useChatStore;

@@ -17,8 +17,9 @@ export const chatHandlers = {
     // const { messageId, newText } = payload;
     // updateMessageWithEdits(messageId, newText);
   },
-  'chat:typing': (_payload) => {
-    // const { roomId, userId, isTyping } = payload;
-    // updateIsTypingStatus(roomId, userId, isTyping);
+  'chat:is-typing-in-room': (payload) => {
+    const { roomId, userIds } = payload;
+    const { setUsersTypingInRoom } = chatActions;
+    setUsersTypingInRoom(roomId, userIds);
   },
 } as const satisfies ChatHandlerMap;

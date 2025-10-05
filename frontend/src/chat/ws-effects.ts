@@ -1,11 +1,18 @@
 import type { AppWsClient } from '../ws/types';
-import { createSendMessage } from './messages';
+import { createSendMessage, createTypingMessage } from './messages';
 
 interface ChatWsEffects {
   postNewMessage(roomId: string, text: string): void;
+  updateTypingStatus(roomId: string, isTyping: boolean): void;
 }
 
 let _client: AppWsClient | null = null;
+function requireClient(): AppWsClient {
+  if (!_client) {
+    throw new Error('Chat WS effects not initialized');
+  }
+  return _client;
+} 
 
 export function initChatWsEffects(client: AppWsClient): void {
   _client = client;
@@ -17,14 +24,17 @@ export function resetChatWsEffectsForTests(): void {
 
 export const chatWsEffects: ChatWsEffects = {
   postNewMessage(roomId: string, text: string) {
-    if (!_client) {
-      throw new Error('Chat WS effects not initialized');
-    }
+    const client = requireClient();
     if (!text.trim()) {
       return;
     }
-    _client.send(createSendMessage(text, roomId));
+    client.send(createSendMessage(text, roomId));
   },
+
+  updateTypingStatus(roomId: string, isTyping: boolean) {
+    requireClient().send(createTypingMessage(roomId, isTyping));
+  },
+
 };
 
 export type { ChatWsEffects };

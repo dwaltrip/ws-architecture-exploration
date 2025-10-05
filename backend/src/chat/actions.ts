@@ -8,6 +8,7 @@ import type {
 } from '../../../common/src';
 import type { HandlerContext } from '../ws/types';
 import { ChatService } from './service';
+import { setUserIsTyping, usersTypingByRoom } from './fake-db';
 
 export class ChatActions {
   constructor(private readonly chatService: ChatService) {}
@@ -67,11 +68,16 @@ export class ChatActions {
       username: ctx.username,
     });
 
+    // Update the fake-db with the typing state
+    setUserIsTyping(payload.roomId, ctx.userId, payload.isTyping);
+
+    // Return the aggregated list of all users currently typing in this room
+    const typingUsers = usersTypingByRoom[payload.roomId];
+    const userIds = typingUsers ? Array.from(typingUsers) : [];
+
     return {
       roomId: payload.roomId,
-      userId: ctx.userId,
-      username: ctx.username,
-      isTyping: payload.isTyping,
+      userIds,
     };
   }
 }
