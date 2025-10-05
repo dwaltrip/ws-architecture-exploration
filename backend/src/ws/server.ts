@@ -4,12 +4,13 @@ import type {
   ClientMessage,
   ChatClientMessage,
   SystemClientMessage,
+  TimerClientMessage,
 } from '../../../common/src';
 import { RoomManager } from './room-manager';
 
 export interface WSDomainMap {
   chat: DomainHandlers<ChatClientMessage>;
-  // otherDomain: DomainHandlers<SomeOtherDomainClientMessage>;
+  timer: DomainHandlers<TimerClientMessage>;
 }
 
 type GenericHandler = (payload: unknown, ctx: HandlerContext) => void | Promise<void>;

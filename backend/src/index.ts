@@ -1,19 +1,22 @@
 import { randomUUID } from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ChatActions, ChatService, createChatHandlers } from './chat';
+import { TimerActions } from './timer/actions';
+import { TimerService } from './timer/service';
+import { createTimerHandlers } from './timer/handlers';
 import { createWSServer } from './ws';
 
 function startExampleServer(port = 3000) {
   const chatService = new ChatService();
   const chatActions = new ChatActions(chatService);
 
-  // const someOtherDomainService = new SomeOtherDomainService();
-  // const someOtherDomainActions = new SomeOtherDomainActions(someOtherDomainService);
+  const timerService = new TimerService();
+  const timerActions = new TimerActions(timerService);
 
   const server = createWSServer(
     {
       chat: createChatHandlers(chatActions),
-      // someOtherDomain: createSomeOtherDomainHandlers(someOtherDomainActions),
+      timer: createTimerHandlers(timerActions),
     },
   );
 

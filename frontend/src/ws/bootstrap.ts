@@ -4,8 +4,10 @@ import type { HandlerMap } from '../../../common/src/utils/message-helpers';
 import { WSClient } from './client';
 import { chatHandlers } from '../chat/handlers';
 import { systemHandlers } from '../system/handlers';
+import { timerHandlers } from '../timer/handlers';
 import { initChatWsEffects, resetChatWsEffectsForTests } from '../chat/ws-effects';
 import { initSystemWsEffects, resetSystemWsEffectsForTests } from '../system/ws-effects';
+import { initTimerWsEffects, resetTimerWsEffectsForTests } from '../timer/ws-effects';
 import { useEffect, useState } from 'react';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
@@ -21,6 +23,7 @@ function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   const allHandlers = {
     ...chatHandlers,
     ...systemHandlers,
+    ...timerHandlers,
   } satisfies HandlerMap<AppIncomingMessage>;
 
   // Create client with all handlers upfront
@@ -32,6 +35,7 @@ function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   // Wire up ws-effects after client exists
   initChatWsEffects(wsClient);
   initSystemWsEffects(wsClient);
+  initTimerWsEffects(wsClient);
 
   if (import.meta.env.DEV) {
     assertHandlersInitializedInDev(wsClient, allHandlers);
@@ -56,6 +60,7 @@ export function resetWsInitializationForTests(): void {
   wsClient = null;
   resetChatWsEffectsForTests();
   resetSystemWsEffectsForTests();
+  resetTimerWsEffectsForTests();
 }
 
 function assertHandlersInitializedInDev(

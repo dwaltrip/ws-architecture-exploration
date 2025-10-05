@@ -4,6 +4,7 @@ import { useChatStore } from "../../chat/chat-store";
 import { useSystemStore, selectUsersInRoom } from "../../system/system-store";
 import { useChatActions } from "../../chat/actions";
 import { useTypingDetection } from "../../chat/use-typing-detection";
+import { TimerControls } from "../../timer/timer-controls";
 
 
 function ChatContainer() {
@@ -117,6 +118,9 @@ function ChatContainer() {
             <li key={user.id}>{user.name}</li>
           ))}
         </ul>
+
+        <h4>Room Timer</h4>
+        <TimerControls roomId={currentRoom?.id || null} />
       </div>
     </div>
   );
