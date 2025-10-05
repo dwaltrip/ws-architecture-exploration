@@ -5,9 +5,9 @@ import { WSClient } from './client';
 import { chatHandlers } from '../chat/handlers';
 import { systemHandlers } from '../system/handlers';
 import { timerHandlers } from '../timer/handlers';
-import { initChatWsEffects, resetChatWsEffectsForTests } from '../chat/ws-effects';
-import { initSystemWsEffects, resetSystemWsEffectsForTests } from '../system/ws-effects';
-import { initTimerWsEffects, resetTimerWsEffectsForTests } from '../timer/ws-effects';
+import { chatWs } from '../chat/ws-effects';
+import { systemWs } from '../system/ws-effects';
+import { timerWs } from '../timer/ws-effects';
 import { useEffect, useState } from 'react';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
@@ -33,9 +33,9 @@ function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   });
 
   // Wire up ws-effects after client exists
-  initChatWsEffects(wsClient);
-  initSystemWsEffects(wsClient);
-  initTimerWsEffects(wsClient);
+  chatWs.init(wsClient);
+  systemWs.init(wsClient);
+  timerWs.init(wsClient);
 
   if (import.meta.env.DEV) {
     assertHandlersInitializedInDev(wsClient, allHandlers);
@@ -58,9 +58,9 @@ function getWsClient(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
 export function resetWsInitializationForTests(): void {
   wsClient?.disconnect();
   wsClient = null;
-  resetChatWsEffectsForTests();
-  resetSystemWsEffectsForTests();
-  resetTimerWsEffectsForTests();
+  chatWs.reset();
+  systemWs.reset();
+  timerWs.reset();
 }
 
 function assertHandlersInitializedInDev(

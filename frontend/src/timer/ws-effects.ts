@@ -1,5 +1,5 @@
-import type { AppWsClient } from '../ws/types';
 import type { ClientMessage } from '../../../common/src';
+import { createWsRef } from '../ws/create-ws-ref';
 
 type TimerStartMessage = Extract<ClientMessage, { type: 'timer:start' }>;
 type TimerPauseMessage = Extract<ClientMessage, { type: 'timer:pause' }>;
@@ -13,60 +13,40 @@ interface TimerWsEffects {
   resetTimer(roomId: string): void;
 }
 
-let _client: AppWsClient | null = null;
+const ws = createWsRef('Timer');
 
-export function initTimerWsEffects(client: AppWsClient): void {
-  _client = client;
-}
-
-export function resetTimerWsEffectsForTests(): void {
-  _client = null;
-}
-
-export const timerWsEffects: TimerWsEffects = {
+const timerWsEffects: TimerWsEffects = {
   startTimer(roomId: string, durationSeconds: number) {
-    if (!_client) {
-      throw new Error('Timer WS effects not initialized');
-    }
     const message: TimerStartMessage = {
       type: 'timer:start',
       payload: { roomId, durationSeconds },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 
   pauseTimer(roomId: string) {
-    if (!_client) {
-      throw new Error('Timer WS effects not initialized');
-    }
     const message: TimerPauseMessage = {
       type: 'timer:pause',
       payload: { roomId },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 
   resumeTimer(roomId: string) {
-    if (!_client) {
-      throw new Error('Timer WS effects not initialized');
-    }
     const message: TimerResumeMessage = {
       type: 'timer:resume',
       payload: { roomId },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 
   resetTimer(roomId: string) {
-    if (!_client) {
-      throw new Error('Timer WS effects not initialized');
-    }
     const message: TimerResetMessage = {
       type: 'timer:reset',
       payload: { roomId },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 };
 
-export type { TimerWsEffects };
+export { timerWsEffects, ws as timerWs };

@@ -1,5 +1,5 @@
-import type { AppWsClient } from '../ws/types';
 import type { ClientMessage } from '../../../common/src';
+import { createWsRef } from '../ws/create-ws-ref';
 
 type SystemRoomJoinMessage = Extract<ClientMessage, { type: 'system:room-join' }>;
 type SystemRoomLeaveMessage = Extract<ClientMessage, { type: 'system:room-leave' }>;
@@ -9,15 +9,7 @@ interface SystemWsEffects {
   leaveRoom(roomId: string): void;
 }
 
-let _client: AppWsClient | null = null;
-
-export function initSystemWsEffects(client: AppWsClient): void {
-  _client = client;
-}
-
-export function resetSystemWsEffectsForTests(): void {
-  _client = null;
-}
+const ws = createWsRef('System');
 
 function normalizeRoomId(roomId: string) {
   const trimmed = roomId.trim();
@@ -27,28 +19,22 @@ function normalizeRoomId(roomId: string) {
   return trimmed;
 }
 
-export const systemWsEffects: SystemWsEffects = {
+const systemWsEffects: SystemWsEffects = {
   joinRoom(roomId: string) {
-    if (!_client) {
-      throw new Error('System WS effects not initialized');
-    }
     const message: SystemRoomJoinMessage = {
       type: 'system:room-join',
       payload: { roomId: normalizeRoomId(roomId) },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 
   leaveRoom(roomId: string) {
-    if (!_client) {
-      throw new Error('System WS effects not initialized');
-    }
     const message: SystemRoomLeaveMessage = {
       type: 'system:room-leave',
       payload: { roomId: normalizeRoomId(roomId) },
     };
-    _client.send(message);
+    ws.getClient().send(message);
   },
 };
 
-export type { SystemWsEffects };
+export { systemWsEffects, ws as systemWs };
