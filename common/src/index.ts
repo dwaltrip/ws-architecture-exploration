@@ -1,6 +1,7 @@
 export * from './chat';
 export * from './messages';
 export * from './system/client-messages';
+export * from './system/server-messages';
 export * from './timer/client-messages';
 export * from './timer/server-messages';
 export * from './types/db';
