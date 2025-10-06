@@ -13,10 +13,10 @@ import { setUserIsTyping, usersTypingByRoom } from './fake-db';
 export class ChatActions {
   constructor(private readonly chatService: ChatService) {}
 
-  async sendMessage(
+  sendMessage(
     payload: ChatSendPayload,
     ctx: HandlerContext
-  ): Promise<ChatMessageBroadcastPayload> {
+  ): ChatMessageBroadcastPayload {
     console.log('[ChatActions] sendMessage', {
       payload,
       userId: ctx.userId,
@@ -33,21 +33,21 @@ export class ChatActions {
     });
   }
 
-  async editMessage(
+  editMessage(
     payload: ChatEditPayload,
     ctx: HandlerContext
-  ): Promise<ChatMessageEditedPayload & { roomId: string }> {
+  ): ChatMessageEditedPayload & { roomId: string } {
     console.log('[ChatActions] editMessage', {
       payload,
       userId: ctx.userId,
       username: ctx.username,
     });
 
-    const existing = await this.chatService.getMessage(payload.messageId);
+    const existing = this.chatService.getMessage(payload.messageId);
     const roomId = existing?.roomId ?? 'unknown-room';
 
     if (existing) {
-      await this.chatService.updateMessage(payload.messageId, payload.newText);
+      this.chatService.updateMessage(payload.messageId, payload.newText);
     }
 
     return {
@@ -58,10 +58,10 @@ export class ChatActions {
     };
   }
 
-  async setTypingState(
+  setTypingState(
     payload: ChatTypingStatePayload,
     ctx: HandlerContext
-  ): Promise<ChatTypingBroadcastPayload> {
+  ): ChatTypingBroadcastPayload {
     console.log('[ChatActions] setTypingState', {
       payload,
       userId: ctx.userId,

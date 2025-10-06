@@ -5,16 +5,16 @@ import type { DomainHandlers } from '../ws/types';
 
 export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatClientMessage> {
   return {
-    'chat:send': async (payload, ctx) => {
-      const message = await actions.sendMessage(payload, ctx);
-      await ctx.broadcastToRoom(
+    'chat:send': (payload, ctx) => {
+      const message = actions.sendMessage(payload, ctx);
+      ctx.broadcastToRoom(
         message.roomId,
         ChatMessageBuilders.message(message)
       );
     },
-    'chat:edit': async (payload, ctx) => {
-      const updated = await actions.editMessage(payload, ctx);
-      await ctx.broadcastToRoom(
+    'chat:edit': (payload, ctx) => {
+      const updated = actions.editMessage(payload, ctx);
+      ctx.broadcastToRoom(
         updated.roomId,
         ChatMessageBuilders.edited({
           messageId: updated.messageId,
@@ -23,9 +23,9 @@ export function createChatHandlers(actions: ChatActions): DomainHandlers<ChatCli
         })
       );
     },
-    'chat:typing': async (payload, ctx) => {
-      const typingState = await actions.setTypingState(payload, ctx);
-      await ctx.broadcastToRoom(
+    'chat:typing': (payload, ctx) => {
+      const typingState = actions.setTypingState(payload, ctx);
+      ctx.broadcastToRoom(
         typingState.roomId,
         ChatMessageBuilders.typing(typingState),
         true

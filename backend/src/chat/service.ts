@@ -11,7 +11,7 @@ export class ChatService {
   private messages = new Map<string, ChatMessageBroadcastPayload>();
   private sequence = 0;
 
-  async saveMessage(input: SaveMessageInput): Promise<ChatMessageBroadcastPayload> {
+  saveMessage(input: SaveMessageInput): ChatMessageBroadcastPayload {
     const id = `msg-${++this.sequence}`;
     const message: ChatMessageBroadcastPayload = {
       id,
@@ -26,14 +26,14 @@ export class ChatService {
     return message;
   }
 
-  async getMessage(id: string): Promise<ChatMessageBroadcastPayload | undefined> {
+  getMessage(id: string): ChatMessageBroadcastPayload | undefined {
     return this.messages.get(id);
   }
 
-  async updateMessage(
+  updateMessage(
     id: string,
     newText: string
-  ): Promise<ChatMessageBroadcastPayload | undefined> {
+  ): ChatMessageBroadcastPayload | undefined {
     const existing = this.messages.get(id);
     if (!existing) {
       return undefined;
