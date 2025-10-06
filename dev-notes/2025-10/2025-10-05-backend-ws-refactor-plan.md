@@ -1,10 +1,13 @@
 # Backend WS Refactor Plan
 
+Project: This is a demo app for exploring and iterating on my ws architecture that I will use in my game (separate repo).
+
 ## Context & Goals
 - Align backend message handling with frontend patterns to simplify mental model.
 - Remove thin service classes in favour of plain functions/actions that can be reused outside WS handlers.
 - Introduce a minimal fake persistence layer per domain while keeping the demo lightweight and easy to iterate on.
 - Improve compile-time safety for handler registration to catch gaps before runtime.
+- Minimize / avoid complex wiring (e.g. fancy DI, action registry), preferring explicit when possible.
 
 ## Key Assumptions
 - Each domain owns its own fake persistence helpers; cross-domain imports happen through explicit wiring instead of a shared singleton.
@@ -39,36 +42,38 @@ backend/src/
   server.ts
 ```
 
-- `db/*` exports the fake persistence helpers (in-memory Maps/Sets) with simple CRUD functions.
-- `domains/*` exports factories like `createChatDomain(deps)`, returning `{ actions, handlers }`.
-- `server.ts` composes domains by instantiating stores once, passing them into domain factories, and merging handler maps.
+- `db/*` exports the fake persistence helpers (in-memory Maps/Sets) with simple CRUD functions that domains can import directly.
+- `domains/*` host module-level stores, action sets, strongly-typed handlers, and a small `ws-bridge` singleton that wires transport primitives in once at bootstrap (mirrors frontend `ws-effects`).
+- `server.ts` boots the WS server, initializes each domain’s bridge with the transport helpers, and merges handler maps.
 - `domains/system` wraps room join/leave flows while depending on an adapter around `RoomManager` supplied by the WS layer.
 
 ### Dependency Flow
-1. Stores (state) live in `db/*`. They expose plain functions and types but hold the in-memory data.
-2. Domain factories receive the required store functions and return:
-   - `actions`: callable from WS handlers *and* other orchestration layers (tests, future HTTP).
-   - `handlers`: strongly-typed `HandlerMap` built from `actions` and message builders.
-3. `createWSServer` receives a merged `HandlerMap` and is responsible only for transport concerns (connection lifecycle, routing by `type`).
-4. The system domain uses the injected room adapter to manage membership events, so the transport no longer hardcodes system message handling.
+1. Stores (state) live in `db/*`; domains import them directly and maintain module-level in-memory data.
+2. Each domain exposes actions that accept a minimal action context (`userId`, `username`, ws helpers) supplied by a tiny `ws-bridge` singleton.
+3. Domain handlers are strongly typed via `HandlerMap`, translate the transport `HandlerContext` into an action context, then invoke the shared actions.
+4. `createWSServer` receives a merged `HandlerMap` and remains focused on transport concerns; during bootstrap we inject its broadcast helpers into every domain bridge, and the system domain still uses the injected room adapter rather than custom switch logic.
 
 This mirrors the frontend, where stores and actions exist independently of the WS client and handlers, and WS effects inject the client once ready.
 
 ### System Domain Details
 - `domains/system` keeps demo-specific logic for room membership, user list broadcasts, and any onboarding/system notifications.
-- The domain factory receives the `RoomManager` adapter (`{ join, leave, getMembers, isMember }`) from the transport layer and reuses it inside actions.
-- Handlers for `system:room-join` and `system:room-leave` move out of `createWSServer`, giving us the same compile-time guarantees and keeping the transport focused on routing.
-- Future system messages (presence, pings, metadata) can share the same action set without touching the websocket server core.
+- Actions import the shared room adapter (`{ join, leave, getMembers, isMember }`) and rely on the system `ws-bridge` for broadcasting, mirroring the other domains.
+- Handlers for `system:room-join` and `system:room-leave` move out of `createWSServer`, giving us compile-time guarantees and keeping the transport focused on routing.
+- Future system messages (presence, pings, metadata) can reuse the same action set without touching the websocket server core.
 
 ### HandlerContext Considerations
 - Keep `HandlerContext.rooms` for now so any domain can access room membership without wiring extra dependencies—this matches the connection-centric nature of room state.
 - Continue exposing transport-level helpers (`send`, `broadcast`, `broadcastToRoom`) plus `userId` and `username`; domains remain free to ignore what they don’t need.
 - If we later move `RoomManager` behind a store, we can still implement `HandlerContext.rooms` on top of that store, so existing domains remain unaffected.
+- Domain handlers will map `HandlerContext` into their domain-specific action context (using the ws bridge for transport helpers) so the actions remain decoupled and callable from other orchestrators.
 
 ### Typing Strategy
 - Replace the backend `GenericHandler` map with the shared `HandlerMap` type from `common`. Example signature:
   ```ts
-  export function createWSServer(handlers: HandlerMap<ServerMessage>) { /* ... */ }
+  export function createWSServer(config: {
+    handlers: HandlerMap<ServerMessage>;
+    roomAdapter: RoomMembershipAdapter;
+  }) { /* ... */ }
   ```
 - Domain handler creation uses the same helper:
   ```ts
@@ -80,10 +85,10 @@ This mirrors the frontend, where stores and actions exist independently of the W
   ```
 - `server.ts` merges handler maps at compile time using a utility similar to the frontend’s `mergeHandlerMaps` to ensure no duplicate keys or missing cases.
 
-### Example Store & Domain Factories
+### Example Store & Domain Wiring
 ```ts
 // backend/src/db/chat-store.ts
-import type { ChatMessageBroadcastPayload } from '../../common/src';
+import type { ChatMessageBroadcastPayload } from '../../../common/src';
 
 type ChatStore = {
   save(message: ChatMessageBroadcastPayload): void;
@@ -110,26 +115,138 @@ export function createChatStore(): ChatStore {
 ```
 
 ```ts
-// backend/src/domains/chat/index.ts
-import { createHandlerMap } from '../../../common/src/utils/message-helpers';
-import { ChatMessageBuilders } from './message-builders';
+// backend/src/domains/chat/store-singleton.ts
+import { createChatStore } from '../../db/chat-store';
 
-export function createChatDomain(deps: {
-  chatStore: ReturnType<typeof createChatStore>;
-  typingStore: ReturnType<typeof createTypingStore>;
-}) {
-  const actions = createChatActions(deps);
+export const chatStore = createChatStore();
+```
 
-  const handlers = createHandlerMap<ChatClientMessage>({
-    'chat:send': (payload, ctx) => {
-      const message = actions.sendMessage(payload, ctx);
-      ctx.broadcastToRoom(message.roomId, ChatMessageBuilders.message(message));
-    },
-    // ...other handlers using actions
-  });
+```ts
+// backend/src/domains/chat/ws-bridge.ts
+import type { ServerMessage } from '../../../common/src';
 
-  return { actions, handlers };
+interface ChatWsApi {
+  broadcastToRoom(
+    roomId: string,
+    message: ServerMessage,
+    excludeSelf?: boolean
+  ): void;
 }
+
+function createChatWsBridge() {
+  let api: ChatWsApi | null = null;
+
+  return {
+    init(next: ChatWsApi) {
+      api = next;
+    },
+    get(): ChatWsApi {
+      if (!api) {
+        throw new Error('Chat WS bridge not initialized');
+      }
+      return api;
+    },
+    reset() {
+      api = null;
+    },
+  };
+}
+
+export const chatWs = createChatWsBridge();
+export type { ChatWsApi };
+```
+
+```ts
+// backend/src/domains/chat/actions.ts
+import type { ChatSendPayload } from '../../../common/src';
+import { ChatMessageBuilders } from './message-builders';
+import { chatWs, type ChatWsApi } from './ws-bridge';
+import { chatStore } from './store-singleton';
+
+interface ChatActionContext {
+  userId: string;
+  username: string;
+  ws: ChatWsApi;
+}
+
+export const chatActions = {
+  sendMessage(payload: ChatSendPayload, ctx: ChatActionContext) {
+    const message = {
+      id: `msg-${Date.now()}`,
+      roomId: payload.roomId,
+      text: payload.text.trim(),
+      userId: ctx.userId,
+      username: ctx.username,
+      timestamp: Date.now(),
+    };
+
+    chatStore.save(message);
+    ctx.ws.broadcastToRoom(message.roomId, ChatMessageBuilders.message(message));
+    return message;
+  },
+};
+
+export type { ChatActionContext };
+```
+
+```ts
+// backend/src/domains/chat/handlers.ts
+import type { ChatClientMessage } from '../../../common/src';
+import { createHandlerMap } from '../../../common/src/utils/message-helpers';
+import type { HandlerContext } from '../../ws/types';
+import { chatWs } from './ws-bridge';
+import { chatActions, type ChatActionContext } from './actions';
+
+function toActionContext(ctx: HandlerContext): ChatActionContext {
+  return {
+    userId: ctx.userId,
+    username: ctx.username,
+    ws: chatWs.get(),
+  };
+}
+
+export const chatHandlers = createHandlerMap<ChatClientMessage>({
+  'chat:send': (payload, ctx) => {
+    chatActions.sendMessage(payload, toActionContext(ctx));
+  },
+  // ...other handlers
+});
+```
+
+```ts
+// backend/src/server.ts (excerpt)
+import { chatHandlers, chatWs } from './domains/chat';
+import { systemHandlers, systemWs } from './domains/system';
+import { timerHandlers, timerWs } from './domains/timer';
+
+const handlers = mergeHandlerMaps(
+  chatHandlers,
+  systemHandlers,
+  timerHandlers,
+);
+
+const server = createWSServer({
+  handlers,
+  roomAdapter,
+});
+
+chatWs.init({
+  broadcastToRoom: (roomId, message, excludeSelf) =>
+    server.broadcastToRoom(roomId, message, excludeSelf),
+});
+
+systemWs.init({
+  broadcastToRoom: (roomId, message, excludeSelf) =>
+    server.broadcastToRoom(roomId, message, excludeSelf),
+});
+
+timerWs.init({
+  broadcastToRoom: (roomId, message, excludeSelf) =>
+    server.broadcastToRoom(roomId, message, excludeSelf),
+});
+
+const wss = new WebSocketServer({ port });
+wss.on('connection', (socket) => server.handleConnection(socket));
 ```
 
 ## Tradeoffs & Constraints
@@ -139,17 +256,17 @@ export function createChatDomain(deps: {
 
 ## Implementation Phases
 1. **Scaffold Stores:** move `chat/service.ts` and `timer/service.ts` data into `db` modules; move typing store from `chat/fake-db.ts` into `db/chat-typing-store.ts` (or similar).
-2. **Domain Factories:** create `domains/chat`, `domains/system`, and `domains/timer` with `create*Domain` functions, deriving `actions` from stores/adapters and exporting typed handlers.
-3. **Server Composition:** refactor `server.ts` to instantiate stores, build the room adapter, call domain factories, merge handler maps, and pass a single map to `createWSServer`.
-4. **Cleanup:** remove old service classes, update imports, ensure exports from domain index files re-export the new factories/actions as needed.
+2. **Domain Modules:** in `domains/chat`, `domains/system`, and `domains/timer`, stand up module-level stores (via singletons), action sets that lean on those stores, strongly-typed handlers, and a `ws-bridge` to accept transport helpers later.
+3. **Server Composition:** refactor `server.ts` to instantiate shared utilities (room adapter, id generators), merge handler maps, initialize each domain’s bridge with the WS server’s broadcast helpers, and pass the combined map into `createWSServer`.
+4. **Cleanup:** remove old service classes, update imports, and ensure domain index files expose the shared actions/handlers/bridges.
 5. **Verification:** manual smoke run (start backend + frontend, send messages, start/pause timer) and possibly a lightweight unit test for actions if time allows.
 
 ## Open Questions
-- Do we want helper reset functions on stores for tests/dev hot reloads? (Not needed immediately, but easy to add.)
+- Do we want helper reset functions on stores/bridges for tests or dev hot reloads? (Not needed immediately, but easy to add.)
 - Long term, do we want a global registry of actions for cross-domain coordination, or keep explicit imports per domain? (Decision for now: stay with explicit imports.)
 - At what point should we trim `HandlerContext` if domains only use a subset of helpers? Worth revisiting once more domains and transports exist.
 
 ## Next Steps
-- Lock in `domains` naming (decision made) and sketch concrete exports for each domain factory.
-- Start implementation with the chat domain to validate the pattern, layer in system next, then port timer once the shared pieces feel solid.
+- Finalize per-domain exports (actions, handlers, ws bridge, store singletons) and naming conventions.
+- Implement the chat domain first (store singleton, ws bridge, actions, handlers), then mirror the pattern in system and timer.
 - After refactor, revisit logging and ensure it remains informative without spamming.
