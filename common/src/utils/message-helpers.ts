@@ -19,11 +19,6 @@ export type MessageHandler<
   TType extends MessageType<TUnion>
 > = (payload: PayloadFor<TUnion, TType>) => void;
 
-// TODO: Not being used? Remove?
-export type HandlerPayloadMap<TUnion extends { type: string; payload: unknown }> = {
-  [TType in MessageType<TUnion>]: PayloadFor<TUnion, TType>;
-};
-
 export type HandlerMap<TUnion extends { type: string; payload: unknown }> = {
   [TType in MessageType<TUnion>]: (payload: PayloadFor<TUnion, TType>) => void;
 };
@@ -40,15 +35,3 @@ export type HandlerMapWithCtx<
 > = {
   [TType in MessageType<TUnion>]: (payload: PayloadFor<TUnion, TType>, ctx: TCtx) => void;
 };
-
-// TODO: Not being used? Remove?
-export function mergeHandlerMaps<TUnion extends { type: string; payload: unknown }>(
-  ...maps: HandlerMap<TUnion>[]
-) {
-  return maps.reduce<HandlerMap<TUnion>>((merged, map) => {
-    (Object.keys(map) as Array<MessageType<TUnion>>).forEach((type) => {
-      merged[type] = map[type];
-    });
-    return merged;
-  }, {} as HandlerMap<TUnion>);
-}
