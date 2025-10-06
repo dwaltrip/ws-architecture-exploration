@@ -1,24 +1,30 @@
 import { randomUUID } from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
-import { ChatActions, ChatService, createChatHandlers } from './chat';
-import { TimerActions } from './timer/actions';
-import { TimerService } from './timer/service';
-import { createTimerHandlers } from './timer/handlers';
+import type { ClientMessage } from '../../common/src';
+import type { HandlerMapWithCtx } from '../../common/src/utils/message-helpers';
+import type { HandlerContext } from './ws/types';
+import { chatHandlers } from './domains/chat';
+import { systemHandlers } from './domains/system';
+import { timerHandlers } from './domains/timer';
 import { createWSServer } from './ws';
+import { wsBridge } from './ws/bridge';
 
 function startExampleServer(port = 3000) {
-  const chatService = new ChatService();
-  const chatActions = new ChatActions(chatService);
+  const handlers = {
+    ...chatHandlers,
+    ...systemHandlers,
+    ...timerHandlers,
+  } satisfies HandlerMapWithCtx<ClientMessage, HandlerContext>;
 
-  const timerService = new TimerService();
-  const timerActions = new TimerActions(timerService);
+  const server = createWSServer(handlers);
 
-  const server = createWSServer(
-    {
-      chat: createChatHandlers(chatActions),
-      timer: createTimerHandlers(timerActions),
-    },
-  );
+  // Initialize the bridge with transport capabilities
+  wsBridge.init({
+    broadcast: server.broadcast,
+    broadcastToRoom: server.broadcastToRoom,
+    sendToUser: server.sendToUser,
+    rooms: server.rooms,
+  });
 
   const wss = new WebSocketServer({ port });
 
