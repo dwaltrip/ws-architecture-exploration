@@ -6,6 +6,12 @@ interface TimerControlsProps {
   roomId: string | null;
 }
 
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 export function TimerControls({ roomId }: TimerControlsProps) {
   const [timerMinutes, setTimerMinutes] = useState('5');
   const { startTimer, pauseTimer, resumeTimer, resetTimer } = useTimerActions();
@@ -35,23 +41,17 @@ export function TimerControls({ roomId }: TimerControlsProps) {
   // Calculate display time
   const getDisplayTime = () => {
     if (timerState.status === 'running' && timerState.startedAt) {
-      const elapsed = (Date.now() - timerState.startedAt) / 1000;
-      const remaining = Math.max(0, timerState.remainingSeconds - elapsed);
-      return Math.floor(remaining);
+      return timerState.remainingSeconds;
     }
-    return Math.floor(timerState.remainingSeconds);
+    return null;
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const time = getDisplayTime();
 
   return (
     <div style={{ padding: '8px' }}>
       <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
-        {formatTime(getDisplayTime())}
+        {time ? formatTime(time) : '--:--'}
       </div>
       <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
         Status: {timerState.status}

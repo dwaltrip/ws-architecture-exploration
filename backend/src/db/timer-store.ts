@@ -9,6 +9,8 @@ export interface TimerState {
 
 type TimerStore = {
   get(roomId: string): TimerState;
+  getAll(): [string, TimerState][];
+  count(): number;
   set(roomId: string, state: TimerState): void;
   reset(): void;
 };
@@ -25,7 +27,13 @@ export function createTimerStore(): TimerStore {
 
   return {
     get(roomId) {
-      return timers.get(roomId) ?? defaultState;
+      return timers.get(roomId) ?? { ...defaultState };
+    },
+    getAll() {
+      return Array.from(timers.entries());
+    },
+    count() {
+      return timers.size;
     },
     set(roomId, state) {
       timers.set(roomId, state);

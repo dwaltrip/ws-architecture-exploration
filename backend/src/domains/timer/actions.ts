@@ -38,6 +38,28 @@ export const timerActions = {
     return statePayload;
   },
 
+  tickTimers() {
+    if (timerStore.count() === 0) {
+      return;
+    }
+
+    let hasChanges = false;
+    timerStore.getAll().forEach(([roomId, timer]) => {
+      if (timer.status !== 'running' || !timer.startedAt) {
+        return;
+      }
+      timer.remainingSeconds = Math.max(0, timer.remainingSeconds - 1);
+      if (timer.remainingSeconds === 0) {
+        timer.status = 'idle';
+      }
+      wsBridge.get().broadcastToRoom(
+        roomId,
+        TimerMessageBuilders.stateChanged({ roomId, ...timer }),
+      );
+      hasChanges = true;
+    });
+  },
+
   pauseTimer(payload: TimerPausePayload, ctx?: UserContext): TimerStateChangedPayload {
     console.log('[timerActions] pauseTimer', { payload, ctx });
 

@@ -9,6 +9,8 @@ import { timerHandlers } from './domains/timer';
 import { createWSServer } from './ws';
 import { wsBridge } from './ws/bridge';
 
+import { initTimerTick } from './domains/timer/init';
+
 function startExampleServer(port = 3000) {
   const handlers = {
     ...chatHandlers,
@@ -25,6 +27,9 @@ function startExampleServer(port = 3000) {
     sendToUser: server.sendToUser,
     rooms: server.rooms,
   });
+
+  // Start the timer tick process
+  initTimerTick();
 
   const wss = new WebSocketServer({ port });
 

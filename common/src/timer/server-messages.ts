@@ -2,6 +2,7 @@ import type { MessageUnion } from '../utils/message-helpers';
 
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'completed';
 
+// NOTE: this duplicates TimerState (mostly)
 export type TimerStateChangedPayload = {
   roomId: string;
   status: TimerStatus;
