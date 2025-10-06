@@ -11,10 +11,10 @@ import { TimerService } from './service';
 export class TimerActions {
   constructor(private readonly timerService: TimerService) {}
 
-  async startTimer(
+  startTimer(
     payload: TimerStartPayload,
     ctx: HandlerContext
-  ): Promise<TimerStateChangedPayload> {
+  ): TimerStateChangedPayload {
     console.log('[TimerActions] startTimer', {
       payload,
       userId: ctx.userId,
@@ -34,10 +34,10 @@ export class TimerActions {
     };
   }
 
-  async pauseTimer(
+  pauseTimer(
     payload: TimerPausePayload,
     ctx: HandlerContext
-  ): Promise<TimerStateChangedPayload> {
+  ): TimerStateChangedPayload {
     console.log('[TimerActions] pauseTimer', {
       payload,
       userId: ctx.userId,
@@ -54,10 +54,10 @@ export class TimerActions {
     };
   }
 
-  async resumeTimer(
+  resumeTimer(
     payload: TimerResumePayload,
     ctx: HandlerContext
-  ): Promise<TimerStateChangedPayload> {
+  ): TimerStateChangedPayload {
     console.log('[TimerActions] resumeTimer', {
       payload,
       userId: ctx.userId,
@@ -74,10 +74,10 @@ export class TimerActions {
     };
   }
 
-  async resetTimer(
+  resetTimer(
     payload: TimerResetPayload,
     ctx: HandlerContext
-  ): Promise<TimerStateChangedPayload> {
+  ): TimerStateChangedPayload {
     console.log('[TimerActions] resetTimer', {
       payload,
       userId: ctx.userId,
