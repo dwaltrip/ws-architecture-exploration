@@ -1,4 +1,6 @@
-import type { WebSocket } from 'ws';
+import { randomUUID } from 'crypto';
+import { WebSocketServer, type WebSocket } from 'ws';
+
 import type { HandlerContext } from './types';
 import type { ClientMessage, ServerMessage } from '../../../common/src';
 import type { HandlerMapWithCtx } from '../../../common/src/utils/message-helpers';
@@ -7,7 +9,16 @@ import { RoomManager } from './room-manager';
 
 type GenericHandler = (payload: unknown, ctx: HandlerContext) => void;
 
-export function createWSServer(handlers: HandlerMapWithCtx<ClientMessage, HandlerContext>) {
+function generateUser() {
+  const userId = randomUUID().slice(0, 12);
+  const username = `User ${userId.slice(0, 8)}`;
+  return { userId, username };
+}
+
+export function createWSServer(
+  port: number,
+  handlers: HandlerMapWithCtx<ClientMessage, HandlerContext>,
+) {
   const handlerMap = new Map<string, GenericHandler>();
 
   Object.entries(handlers).forEach(([type, handler]) => {
@@ -58,47 +69,56 @@ export function createWSServer(handlers: HandlerMapWithCtx<ClientMessage, Handle
     }
   }
 
-  return {
-    handleConnection(socket: WebSocket, userId: string, username: string) {
-      clients.set(userId, socket);
-      console.log(`Client connected -- ${userId}`);
+  function handleConnection(socket: WebSocket, userId: string, username: string) {
+    clients.set(userId, socket);
+    console.log(`Client connected -- ${userId}`);
 
-      const context: HandlerContext = {
-        userId,
-        username,
-      };
+    const context: HandlerContext = {
+      userId,
+      username,
+    };
 
-      socket.on('message', (raw) => {
+    socket.on('message', (raw) => {
+      try {
+        const message = JSON.parse(raw.toString()) as ClientMessage;
+
+        const handler = handlerMap.get(message.type);
+
+        if (!handler) {
+          throw new Error(`Unknown message type: ${String((message as { type?: unknown }).type)}`);
+        }
+
+        handler(message.payload, context);
+      } catch (error) {
+        console.error('Failed to handle message', error);
+        throw error;
+      }
+    });
+
+    socket.on('close', () => {
+      clients.delete(userId);
+      const userRooms = roomManager.getRoomsForUser(userId);
+
+      for (const roomId of userRooms) {
         try {
-          const message = JSON.parse(raw.toString()) as ClientMessage;
-
-          const handler = handlerMap.get(message.type);
-
-          if (!handler) {
-            throw new Error(`Unknown message type: ${String((message as { type?: unknown }).type)}`);
-          }
-
-          handler(message.payload, context);
+          roomManager.leave(roomId, userId);
         } catch (error) {
-          console.error('Failed to handle message', error);
-          throw error;
+          console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
         }
-      });
+      }
+      console.log(`Client disconnected -- ${userId}`);
+    });
+  }
 
-      socket.on('close', () => {
-        clients.delete(userId);
-        const userRooms = roomManager.getRoomsForUser(userId);
+  const wss = new WebSocketServer({ port });
+  console.log(`WebSocket server listening on ws://localhost:${port}`);
 
-        for (const roomId of userRooms) {
-          try {
-            roomManager.leave(roomId, userId);
-          } catch (error) {
-            console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
-          }
-        }
-        console.log(`Client disconnected -- ${userId}`);
-      });
-    },
+  wss.on('connection', (socket: WebSocket) => {
+    const { userId, username } = generateUser();
+    handleConnection(socket, userId, username);
+  });
+
+  return {
     broadcast,
     broadcastToRoom,
     sendToUser,

@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-import { WebSocketServer, WebSocket } from 'ws';
 import type { ClientMessage } from '../../common/src';
 import type { HandlerMapWithCtx } from '../../common/src/utils/message-helpers';
 import type { HandlerContext } from './ws/types';
@@ -8,7 +6,6 @@ import { systemHandlers } from './domains/system';
 import { timerHandlers } from './domains/timer';
 import { createWSServer } from './ws';
 import { wsBridge } from './ws/bridge';
-
 import { initTimerTick } from './domains/timer/init';
 
 function startExampleServer(port = 3000) {
@@ -18,7 +15,7 @@ function startExampleServer(port = 3000) {
     ...timerHandlers,
   } satisfies HandlerMapWithCtx<ClientMessage, HandlerContext>;
 
-  const server = createWSServer(handlers);
+  const server = createWSServer(port, handlers);
 
   // Initialize the bridge with transport capabilities
   wsBridge.init({
@@ -30,19 +27,6 @@ function startExampleServer(port = 3000) {
 
   // Start the timer tick process
   initTimerTick();
-
-  const wss = new WebSocketServer({ port });
-
-  wss.on('connection', (socket: WebSocket) => {
-    const userId = randomUUID();
-    const username = `user-${userId.slice(0, 8)}`;
-
-    server.handleConnection(socket, userId, username);
-  });
-
-  console.log(`WebSocket server listening on ws://localhost:${port}`);
-
-  return { wss, server };
 }
 
 startExampleServer();
