@@ -10,7 +10,7 @@ import { timerStore } from './store-singleton';
 import { wsBridge } from '../../ws/bridge';
 import type { TimerState } from '../../db/timer-store';
 
-type UserContext = { userId: string; username: string };
+type UserContext = { userId: string; };
 
 export const timerActions = {
   startTimer(payload: TimerStartPayload, ctx?: UserContext): TimerStateChangedPayload {

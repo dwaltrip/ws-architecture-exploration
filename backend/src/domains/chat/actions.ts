@@ -9,20 +9,22 @@ import type {
 import { ChatMessageBuilders } from './message-builders';
 import { chatStore } from './store-singleton';
 import { wsBridge } from '../../ws/bridge';
+import * as userStore from '../../db/user-store.js';
 
-type UserContext = { userId: string; username: string };
+type UserContext = { userId: string };
 
 export const chatActions = {
   sendMessage(payload: ChatSendPayload, ctx?: UserContext): ChatMessageBroadcastPayload {
     console.log('[chatActions] sendMessage', { payload, ctx });
 
+    const user = ctx?.userId ? userStore.getUser(ctx.userId) : undefined;
     const text = payload.text.trim() || 'Message text missing';
     const message: ChatMessageBroadcastPayload = {
       id: `msg-${Date.now()}`,
       roomId: payload.roomId,
       text,
       userId: ctx?.userId ?? 'unknown-user',
-      username: ctx?.username ?? 'anonymous-user',
+      username: user?.username ?? 'anonymous-user',
       timestamp: Date.now(),
     };
 
@@ -34,6 +36,7 @@ export const chatActions = {
   editMessage(payload: ChatEditPayload, ctx?: UserContext): ChatMessageEditedPayload & { roomId: string } {
     console.log('[chatActions] editMessage', { payload, ctx });
 
+    const user = ctx?.userId ? userStore.getUser(ctx.userId) : undefined;
     const existing = chatStore.find(payload.messageId);
     const roomId = existing?.roomId ?? 'unknown-room';
 
@@ -45,7 +48,7 @@ export const chatActions = {
       roomId,
       messageId: payload.messageId,
       newText: payload.newText,
-      editedBy: ctx?.username ?? 'anonymous-user',
+      editedBy: user?.username ?? 'anonymous-user',
     };
 
     wsBridge.broadcastToRoom(roomId, ChatMessageBuilders.edited({

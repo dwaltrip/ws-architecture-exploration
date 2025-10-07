@@ -5,15 +5,15 @@ import { timerActions } from './actions';
 
 export const timerHandlers = {
   'timer:start': (payload, ctx) => {
-    timerActions.startTimer(payload, { userId: ctx.userId, username: ctx.username });
+    timerActions.startTimer(payload, { userId: ctx.userId });
   },
   'timer:pause': (payload, ctx) => {
-    timerActions.pauseTimer(payload, { userId: ctx.userId, username: ctx.username });
+    timerActions.pauseTimer(payload, { userId: ctx.userId });
   },
   'timer:resume': (payload, ctx) => {
-    timerActions.resumeTimer(payload, { userId: ctx.userId, username: ctx.username });
+    timerActions.resumeTimer(payload, { userId: ctx.userId });
   },
   'timer:reset': (payload, ctx) => {
-    timerActions.resetTimer(payload, { userId: ctx.userId, username: ctx.username });
+    timerActions.resetTimer(payload, { userId: ctx.userId });
   },
 } satisfies HandlerMapWithCtx<TimerClientMessage, HandlerContext>;

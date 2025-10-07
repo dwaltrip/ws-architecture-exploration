@@ -8,6 +8,10 @@ export type SystemUsersForRoomPayload = {
 
 export type SystemServerPayloadMap = {
   'system:users-for-room': SystemUsersForRoomPayload,
+  'system:user-info': {
+    userId: string;
+    username: string;
+  },
 };
 
 export type SystemServerMessageType = keyof SystemServerPayloadMap;

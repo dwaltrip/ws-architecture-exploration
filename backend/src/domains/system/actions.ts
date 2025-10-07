@@ -1,6 +1,8 @@
 import type { SystemRoomJoinPayload, SystemRoomLeavePayload } from '../../../../common/src';
 import { wsBridge } from '../../ws/bridge';
 import { SystemMessageBuilders } from './message-builders';
+import * as userStore from '../../db/user-store.js';
+import { generateUsername } from '../../utils/username-generator.js';
 
 type UserContext = { userId: string };
 
@@ -10,6 +12,17 @@ function normalizeRoomId(roomId: unknown): string | null {
   }
   const trimmed = roomId.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function createUser(): { userId: string; username: string } {
+  const userId = userStore.generateUserId();
+  const username = generateUsername();
+  userStore.addUser(userId, username);
+  return { userId, username };
+}
+
+export function removeUser(userId: string): void {
+  userStore.removeUser(userId);
 }
 
 export const systemActions = {
@@ -33,7 +46,10 @@ export const systemActions = {
 
     wsBridge.broadcastToRoom(normalizedRoomId, SystemMessageBuilders.usersForRoom({
       roomId: normalizedRoomId,
-      users: userIds.map((id) => ({ id, name: 'User ' + id })),
+      users: userIds.map((id) => {
+        const user = userStore.getUser(id);
+        return { id, name: user?.username ?? 'Unknown User' };
+      }),
     }));
   },
 

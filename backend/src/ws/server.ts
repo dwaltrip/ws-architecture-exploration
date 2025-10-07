@@ -16,8 +16,10 @@ export interface WSServerConfig<
 > {
   port: number;
   handlers: HandlerMapWithCtx<TIncoming, TContext>;
-  createContext(details: { socket: WebSocket }): TContext;
+  onConnection?(socket: WebSocket): UserId;
+  createContext(userId: UserId): TContext;
   getUserId(context: TContext): string;
+  onDisconnect?(userId: UserId): void;
   encode?(message: TOutgoing): string;
   decode?(raw: string): TIncoming;
 }
@@ -44,8 +46,10 @@ export function createWSServer<
   const {
     port,
     handlers,
+    onConnection,
     createContext,
     getUserId,
+    onDisconnect,
     encode = (message) => JSON.stringify(message),
     decode = (raw) => JSON.parse(raw) as TIncoming,
   } = config;
@@ -104,8 +108,8 @@ export function createWSServer<
   console.log(`WebSocket server listening on ws://localhost:${port}`);
 
   wss.on('connection', (socket: WebSocket) => {
-    const context = createContext({ socket });
-    const userId = getUserId(context);
+    const userId = onConnection ? onConnection(socket) : '';
+    const context = createContext(userId);
 
     clients.set(userId, socket);
 
@@ -134,6 +138,10 @@ export function createWSServer<
         } catch (error) {
           console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
         }
+      }
+
+      if (onDisconnect) {
+        onDisconnect(userId);
       }
 
       console.log(`Client disconnected -- ${userId}`);

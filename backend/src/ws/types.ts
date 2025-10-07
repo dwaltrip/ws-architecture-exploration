@@ -2,7 +2,6 @@ import type { MessageType, PayloadFor } from '../../../common/src';
 
 export interface HandlerContext {
   userId: string;
-  username: string;
 }
 
 export type { BroadcastOptions } from './bridge';

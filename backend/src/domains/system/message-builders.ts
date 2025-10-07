@@ -17,4 +17,9 @@ function createSystemMessageBuilder<TType extends keyof SystemServerPayloadMap &
 
 export const SystemMessageBuilders = {
   usersForRoom: createSystemMessageBuilder('system:users-for-room'),
+  userInfo: createSystemMessageBuilder('system:user-info'),
 };
+
+export function buildUserInfoMessage(userId: string, username: string) {
+  return SystemMessageBuilders.userInfo({ userId, username });
+}
