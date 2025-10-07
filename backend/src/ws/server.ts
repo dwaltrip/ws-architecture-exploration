@@ -1,5 +1,6 @@
 import { WebSocketServer, type WebSocket } from 'ws';
 
+import { UserId } from '../../../common/src';
 import type {
   HandlerMapWithCtx,
   MessageType,
@@ -55,7 +56,7 @@ export function createWSServer<
     return handlers[type];
   }
 
-  const clients = new Map<string, WebSocket>();
+  const clients = new Map<UserId, WebSocket>();
   const roomManager = new RoomManager();
 
   const rooms: RoomMembershipAdapter = {
