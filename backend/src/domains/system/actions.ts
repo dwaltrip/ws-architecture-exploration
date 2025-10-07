@@ -48,7 +48,7 @@ export const systemActions = {
       roomId: normalizedRoomId,
       users: userIds.map((id) => {
         const user = userStore.getUser(id);
-        return { id, name: user?.username ?? 'Unknown User' };
+        return { id, username: user?.username ?? 'Unknown User' };
       }),
     }));
   },

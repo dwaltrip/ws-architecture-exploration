@@ -5,13 +5,13 @@ type ChatRoomId = string;
 
 interface User {
   id: UserId;
-  name: string;
+  username: string;
 }
 
 interface ChatMessage {
   id: ChatMessageId;
   content: string;
-  user: User
+  userId: UserId;
 }
 
 interface ChatRoom {

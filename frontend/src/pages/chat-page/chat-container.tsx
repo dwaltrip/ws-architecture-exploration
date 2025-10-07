@@ -31,10 +31,10 @@ function ChatContainer() {
   const typingUsers = usersInCurrentRoom.filter(user => typingUserIds.includes(user.id));
   const typingText = typingUsers.length > 0
     ? typingUsers.length === 1
-      ? `${typingUsers[0].name} is typing...`
+      ? `${typingUsers[0].username} is typing...`
       : typingUsers.length === 2
-        ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
-        : `${typingUsers[0].name}, ${typingUsers[1].name}, and ${typingUsers.length - 2} other${typingUsers.length - 2 > 1 ? 's' : ''} are typing...`
+        ? `${typingUsers[0].username} and ${typingUsers[1].username} are typing...`
+        : `${typingUsers[0].username}, ${typingUsers[1].username}, and ${typingUsers.length - 2} other${typingUsers.length - 2 > 1 ? 's' : ''} are typing...`
     : '';
 
   useEffect(() => {
@@ -68,11 +68,15 @@ function ChatContainer() {
         </div>
 
         <div className="chat-messages">
-          {messages.map((msg) => (
-            <div key={msg.id} className="chat-message">
-              <strong>{msg.user.name}:</strong> {msg.content}
-            </div>
-          ))}
+          {messages.map((msg) => {
+            const user = usersInCurrentRoom.find(u => u.id === msg.userId);
+            const username = user?.username || 'Unknown User';
+            return (
+              <div key={msg.id} className="chat-message">
+                <strong>{username}:</strong> {msg.content}
+              </div>
+            );
+          })}
         </div>
 
         {typingText && (
@@ -113,9 +117,8 @@ function ChatContainer() {
 
         <h4>Users</h4>
         <ul>
-          {/* TODO: use actual Users w/ usernames */}
           {usersInCurrentRoom.map((user) => (
-            <li key={user.id}>{user.name}</li>
+            <li key={user.id}>{user.username}</li>
           ))}
         </ul>
 

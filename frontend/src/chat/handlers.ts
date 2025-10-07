@@ -10,7 +10,7 @@ export const chatHandlers = {
     addReceivedMessage({
       id,
       content: text,
-      user: { id: userId, name: 'User ' + userId },
+      userId,
     });
   },
   'chat:edited': (_payload) => {
