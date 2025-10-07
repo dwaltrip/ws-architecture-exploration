@@ -33,7 +33,7 @@ export const timerActions = {
       startedAt: state.startedAt,
     };
 
-    wsBridge.get().broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
+    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
 
     return statePayload;
   },
@@ -52,7 +52,7 @@ export const timerActions = {
       if (timer.remainingSeconds === 0) {
         timer.status = 'idle';
       }
-      wsBridge.get().broadcastToRoom(
+      wsBridge.broadcastToRoom(
         roomId,
         TimerMessageBuilders.stateChanged({ roomId, ...timer }),
       );
@@ -96,7 +96,7 @@ export const timerActions = {
       startedAt: state.startedAt,
     };
 
-    wsBridge.get().broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
+    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
 
     return statePayload;
   },
@@ -133,7 +133,7 @@ export const timerActions = {
       startedAt: state.startedAt,
     };
 
-    wsBridge.get().broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
+    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
 
     return statePayload;
   },
@@ -158,7 +158,7 @@ export const timerActions = {
       startedAt: state.startedAt,
     };
 
-    wsBridge.get().broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
+    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
 
     return statePayload;
   },

@@ -27,7 +27,7 @@ export const chatActions = {
     };
 
     chatStore.save(message);
-    wsBridge.get().broadcastToRoom(message.roomId, ChatMessageBuilders.message(message));
+    wsBridge.broadcastToRoom(message.roomId, ChatMessageBuilders.message(message));
     return message;
   },
 
@@ -48,7 +48,7 @@ export const chatActions = {
       editedBy: ctx?.username ?? 'anonymous-user',
     };
 
-    wsBridge.get().broadcastToRoom(roomId, ChatMessageBuilders.edited({
+    wsBridge.broadcastToRoom(roomId, ChatMessageBuilders.edited({
       messageId: editPayload.messageId,
       newText: editPayload.newText,
       editedBy: editPayload.editedBy,
@@ -72,7 +72,7 @@ export const chatActions = {
 
     const opts = ctx?.userId ? { excludeUserId: ctx.userId } : undefined;
 
-    wsBridge.get().broadcastToRoom(
+    wsBridge.broadcastToRoom(
       payload.roomId,
       ChatMessageBuilders.typing(typingBroadcast),
       opts,

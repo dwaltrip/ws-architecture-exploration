@@ -1,8 +1,5 @@
-import { randomUUID } from 'crypto';
 import { WebSocketServer, type WebSocket } from 'ws';
 
-import type { HandlerContext } from './types';
-import type { ClientMessage, ServerMessage } from '../../../common/src';
 import type {
   HandlerMapWithCtx,
   MessageType,
@@ -11,19 +8,50 @@ import type {
 import type { BroadcastOptions, RoomMembershipAdapter } from './bridge';
 import { RoomManager } from './room-manager';
 
-function generateUser() {
-  const userId = randomUUID().slice(0, 12);
-  const username = `User ${userId.slice(0, 8)}`;
-  return { userId, username };
+export interface WSServerConfig<
+  TIncoming extends { type: string; payload: unknown },
+  TOutgoing extends { type: string; payload: unknown },
+  TContext
+> {
+  port: number;
+  handlers: HandlerMapWithCtx<TIncoming, TContext>;
+  createContext(details: { socket: WebSocket }): TContext;
+  getUserId(context: TContext): string;
+  encode?(message: TOutgoing): string;
+  decode?(raw: string): TIncoming;
 }
 
-export function createWSServer(
-  port: number,
-  handlers: HandlerMapWithCtx<ClientMessage, HandlerContext>,
-) {
-  function getHandler<TType extends MessageType<ClientMessage>>(
+export interface WSServerTransport<
+  TOutgoing extends { type: string; payload: unknown }
+> {
+  broadcast(message: TOutgoing, opts?: BroadcastOptions): void;
+  broadcastToRoom(roomId: string, message: TOutgoing, opts?: BroadcastOptions): void;
+  sendToUser(userId: string, message: TOutgoing): void;
+}
+
+export interface WSServerInstance<
+  TOutgoing extends { type: string; payload: unknown }
+> extends WSServerTransport<TOutgoing> {
+  rooms: RoomMembershipAdapter;
+}
+
+export function createWSServer<
+  TIncoming extends { type: string; payload: unknown },
+  TOutgoing extends { type: string; payload: unknown },
+  TContext
+>(config: WSServerConfig<TIncoming, TOutgoing, TContext>): WSServerInstance<TOutgoing> {
+  const {
+    port,
+    handlers,
+    createContext,
+    getUserId,
+    encode = (message) => JSON.stringify(message),
+    decode = (raw) => JSON.parse(raw) as TIncoming,
+  } = config;
+
+  function getHandler<TType extends MessageType<TIncoming>>(
     type: TType,
-  ): (payload: PayloadFor<ClientMessage, TType>, ctx: HandlerContext) => void {
+  ): (payload: PayloadFor<TIncoming, TType>, ctx: TContext) => void {
     return handlers[type];
   }
 
@@ -45,8 +73,8 @@ export function createWSServer(
     },
   };
 
-  function broadcast(message: ServerMessage, opts?: BroadcastOptions): void {
-    const data = JSON.stringify(message);
+  function broadcast(message: TOutgoing, opts?: BroadcastOptions): void {
+    const data = encode(message);
     for (const [id, ws] of clients.entries()) {
       if (!opts?.excludeUserId || id !== opts.excludeUserId) {
         ws.send(data);
@@ -54,9 +82,9 @@ export function createWSServer(
     }
   }
 
-  function broadcastToRoom(roomId: string, message: ServerMessage, opts?: BroadcastOptions): void {
+  function broadcastToRoom(roomId: string, message: TOutgoing, opts?: BroadcastOptions): void {
     const members = roomManager.requireMembers(roomId);
-    const data = JSON.stringify(message);
+    const data = encode(message);
     for (const memberId of members) {
       if (!opts?.excludeUserId || memberId !== opts.excludeUserId) {
         clients.get(memberId)?.send(data);
@@ -64,25 +92,25 @@ export function createWSServer(
     }
   }
 
-  function sendToUser(userId: string, message: ServerMessage): void {
+  function sendToUser(userId: string, message: TOutgoing): void {
     const socket = clients.get(userId);
     if (socket) {
-      socket.send(JSON.stringify(message));
+      socket.send(encode(message));
     }
   }
 
-  function handleConnection(socket: WebSocket, userId: string, username: string) {
-    clients.set(userId, socket);
-    console.log(`Client connected -- ${userId}`);
+  const wss = new WebSocketServer({ port });
+  console.log(`WebSocket server listening on ws://localhost:${port}`);
 
-    const context: HandlerContext = {
-      userId,
-      username,
-    };
+  wss.on('connection', (socket: WebSocket) => {
+    const context = createContext({ socket });
+    const userId = getUserId(context);
+
+    clients.set(userId, socket);
 
     socket.on('message', (raw) => {
       try {
-        const message = JSON.parse(raw.toString()) as ClientMessage;
+        const message = decode(raw.toString());
         const handler = getHandler(message.type);
 
         if (!handler) {
@@ -92,7 +120,6 @@ export function createWSServer(
         handler(message.payload, context);
       } catch (error) {
         console.error('Failed to handle message', error);
-        throw error;
       }
     });
 
@@ -107,16 +134,9 @@ export function createWSServer(
           console.error(`Failed to remove ${userId} from room ${roomId} on disconnect`, error);
         }
       }
+
       console.log(`Client disconnected -- ${userId}`);
     });
-  }
-
-  const wss = new WebSocketServer({ port });
-  console.log(`WebSocket server listening on ws://localhost:${port}`);
-
-  wss.on('connection', (socket: WebSocket) => {
-    const { userId, username } = generateUser();
-    handleConnection(socket, userId, username);
   });
 
   return {

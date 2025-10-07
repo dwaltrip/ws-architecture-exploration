@@ -26,12 +26,12 @@ export const systemActions = {
     }
 
     console.log(`User ${ctx.userId} joining room ${normalizedRoomId}`);
-    wsBridge.get().rooms.join(normalizedRoomId, ctx.userId);
+    wsBridge.rooms.join(normalizedRoomId, ctx.userId);
 
-    const members = wsBridge.get().rooms.getMembers(normalizedRoomId);
+    const members = wsBridge.rooms.getMembers(normalizedRoomId);
     const userIds = members ? Array.from(members) : [];
 
-    wsBridge.get().broadcastToRoom(normalizedRoomId, SystemMessageBuilders.usersForRoom({
+    wsBridge.broadcastToRoom(normalizedRoomId, SystemMessageBuilders.usersForRoom({
       roomId: normalizedRoomId,
       users: userIds.map((id) => ({ id, name: 'User ' + id })),
     }));
@@ -49,6 +49,6 @@ export const systemActions = {
       throw new Error('User context required for leaveRoom');
     }
 
-    wsBridge.get().rooms.leave(normalizedRoomId, ctx.userId);
+    wsBridge.rooms.leave(normalizedRoomId, ctx.userId);
   },
 };
