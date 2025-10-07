@@ -3,11 +3,13 @@ import { WebSocketServer, type WebSocket } from 'ws';
 
 import type { HandlerContext } from './types';
 import type { ClientMessage, ServerMessage } from '../../../common/src';
-import type { HandlerMapWithCtx } from '../../../common/src/utils/message-helpers';
+import type {
+  HandlerMapWithCtx,
+  MessageType,
+  PayloadFor,
+} from '../../../common/src/utils/message-helpers';
 import type { BroadcastOptions, RoomMembershipAdapter } from './bridge';
 import { RoomManager } from './room-manager';
-
-type GenericHandler = (payload: unknown, ctx: HandlerContext) => void;
 
 function generateUser() {
   const userId = randomUUID().slice(0, 12);
@@ -19,11 +21,11 @@ export function createWSServer(
   port: number,
   handlers: HandlerMapWithCtx<ClientMessage, HandlerContext>,
 ) {
-  const handlerMap = new Map<string, GenericHandler>();
-
-  Object.entries(handlers).forEach(([type, handler]) => {
-    handlerMap.set(type, handler as GenericHandler);
-  });
+  function getHandler<TType extends MessageType<ClientMessage>>(
+    type: TType,
+  ): (payload: PayloadFor<ClientMessage, TType>, ctx: HandlerContext) => void {
+    return handlers[type];
+  }
 
   const clients = new Map<string, WebSocket>();
   const roomManager = new RoomManager();
@@ -81,8 +83,7 @@ export function createWSServer(
     socket.on('message', (raw) => {
       try {
         const message = JSON.parse(raw.toString()) as ClientMessage;
-
-        const handler = handlerMap.get(message.type);
+        const handler = getHandler(message.type);
 
         if (!handler) {
           throw new Error(`Unknown message type: ${String((message as { type?: unknown }).type)}`);
