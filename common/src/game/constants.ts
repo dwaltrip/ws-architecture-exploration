@@ -1,0 +1,5 @@
+
+const GRID_SIZE = 20;
+const MAX_SPAWN_ATTEMPTS = 50;
+
+export { GRID_SIZE, MAX_SPAWN_ATTEMPTS };

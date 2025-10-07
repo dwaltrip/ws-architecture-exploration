@@ -25,6 +25,10 @@ export function removeUser(userId: string): void {
   userStore.removeUser(userId);
 }
 
+export function getUser(userId: string) {
+  return userStore.getUser(userId);
+}
+
 export const systemActions = {
   joinRoom(payload: SystemRoomJoinPayload, ctx?: UserContext): void {
     console.log('[systemActions] joinRoom', { payload, ctx });

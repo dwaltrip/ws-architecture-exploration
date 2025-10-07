@@ -5,9 +5,11 @@ import { WSClient } from './client';
 import { chatHandlers } from '../chat/handlers';
 import { systemHandlers } from '../system/handlers';
 import { timerHandlers } from '../timer/handlers';
+import { gameHandlers } from '../game/handlers';
 import { chatWs } from '../chat/ws-effects';
 import { systemWs } from '../system/ws-effects';
 import { timerWs } from '../timer/ws-effects';
+import { gameWs } from '../game/ws-effects';
 import { useEffect, useState } from 'react';
 
 const WEBSOCKET_URL = 'ws://localhost:3000';
@@ -24,6 +26,7 @@ function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
     ...chatHandlers,
     ...systemHandlers,
     ...timerHandlers,
+    ...gameHandlers,
   } satisfies HandlerMap<AppIncomingMessage>;
 
   // Create client with all handlers upfront
@@ -36,6 +39,7 @@ function initializeWsApp(): WSClient<AppIncomingMessage, AppOutgoingMessage> {
   chatWs.init(wsClient);
   systemWs.init(wsClient);
   timerWs.init(wsClient);
+  gameWs.init(wsClient);
 
   if (import.meta.env.DEV) {
     assertHandlersInitializedInDev(wsClient, allHandlers);
@@ -61,6 +65,7 @@ export function resetWsInitializationForTests(): void {
   chatWs.reset();
   systemWs.reset();
   timerWs.reset();
+  gameWs.reset();
 }
 
 function assertHandlersInitializedInDev(

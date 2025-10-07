@@ -1,0 +1,1 @@
+export { gameHandlers } from './handlers';

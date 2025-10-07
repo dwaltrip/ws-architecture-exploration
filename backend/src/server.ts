@@ -4,10 +4,13 @@ import type { HandlerContext } from './ws/types';
 import { chatHandlers } from './domains/chat';
 import { systemHandlers } from './domains/system';
 import { timerHandlers } from './domains/timer';
+import { gameHandlers } from './domains/game';
 import { createWSServer } from './ws';
 import { wsBridge } from './ws/bridge';
 import { initTimerTick } from './domains/timer/init';
+import { initGameTick } from './domains/game/init';
 import { createUser, removeUser } from './domains/system/actions.js';
+import { gameActions } from './domains/game/actions';
 import { buildUserInfoMessage } from './domains/system/message-builders.js';
 
 function startExampleServer(port = 3000) {
@@ -15,6 +18,7 @@ function startExampleServer(port = 3000) {
     ...chatHandlers,
     ...systemHandlers,
     ...timerHandlers,
+    ...gameHandlers,
   } satisfies HandlerMapWithCtx<ClientMessage, HandlerContext>;
 
   const server = createWSServer<ClientMessage, ServerMessage, HandlerContext>({
@@ -31,6 +35,7 @@ function startExampleServer(port = 3000) {
     },
     getUserId: (ctx) => ctx.userId,
     onDisconnect: (userId) => {
+      gameActions.leaveGame(userId);
       removeUser(userId);
     },
   });
@@ -40,6 +45,9 @@ function startExampleServer(port = 3000) {
 
   // Start the timer tick process
   initTimerTick();
+
+  // Start the game tick process
+  initGameTick();
 }
 
 startExampleServer();
