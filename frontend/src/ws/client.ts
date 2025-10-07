@@ -1,5 +1,6 @@
 import {
   type HandlerMap,
+  type MessageType,
 } from '../../../common/src/utils/message-helpers';
 import { createTimeout, type Timeout } from '../utils/create-timeout';
 
@@ -87,23 +88,28 @@ export class WSClient<
   }
 
   registerHandlers(handlerMap: HandlerMap<TIncoming>) {
-    let type: keyof typeof handlerMap;
     if (this.handlers === null) {
       this.handlers = { ...handlerMap };
+      return;
     }
-    else {
-      for (type in handlerMap) {
-        if (type in this.handlers) {
-          console.error(`Handler for message type "${type}" already exists`);
-        }
-        else {
-          this.handlers[type] = handlerMap[type];
-        }
+
+    const entries = Object.entries(handlerMap) as Array<
+      [
+        MessageType<TIncoming>,
+        HandlerMap<TIncoming>[MessageType<TIncoming>]
+      ]
+    >;
+
+    for (const [type, handler] of entries) {
+      if (type in this.handlers) {
+        console.error(`Handler for message type "${type}" already exists`);
+        continue;
       }
+      this.handlers[type] = handler;
     }
   }
 
-  getHandler(type: keyof HandlerMap<TIncoming>) {
+  getHandler<TType extends MessageType<TIncoming>>(type: TType) {
     if (!this.handlers) {
       return undefined;
     }
@@ -208,8 +214,7 @@ export class WSClient<
       return;
     }
     try {
-      // TODO: Improve type constraints to avoid 'as never' cast
-      handler(message.payload as never);
+      handler(message.payload);
     } catch (error) {
       console.error(`Error in handler for message type "${message.type}":`, error);
     }
