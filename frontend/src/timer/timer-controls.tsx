@@ -40,7 +40,7 @@ export function TimerControls({ roomId }: TimerControlsProps) {
 
   // Calculate display time
   const getDisplayTime = () => {
-    if (timerState.status === 'running' && timerState.startedAt) {
+    if (timerState.status === 'running') {
       return timerState.remainingSeconds;
     }
     return null;

@@ -5,7 +5,6 @@ export interface TimerState {
   status: TimerStatus;
   remainingSeconds: number;
   totalDurationSeconds: number;
-  startedAt: number | null;
 }
 
 interface TimerStoreState {
@@ -20,7 +19,6 @@ const DEFAULT_TIMER_STATE: TimerState = {
   status: 'idle',
   remainingSeconds: 0,
   totalDurationSeconds: 0,
-  startedAt: null,
 };
 
 const useTimerStore = create<TimerStoreState>((set) => ({

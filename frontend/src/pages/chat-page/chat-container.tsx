@@ -5,37 +5,28 @@ import { useSystemStore, selectUsersInRoom } from "../../system/system-store";
 import { useChatActions } from "../../chat/actions";
 import { useTypingDetection } from "../../chat/use-typing-detection";
 import { TimerControls } from "../../timer/timer-controls";
-
+import { TypingIndicators } from "./typing-indicators";
 
 function ChatContainer() {
   const [newMessageText, setNewMessageText] = useState('');
-
-  const { joinGeneralRoom, sendMessage } = useChatActions();
-
   const {
     messages,
     currentRoom,
     availableRooms,
     usersTypingByRoom,
   } = useChatStore();
+  const { joinGeneralRoom, sendMessage } = useChatActions();
 
-  const usersInCurrentRoom = Array.from(useSystemStore(selectUsersInRoom(currentRoom?.id || '')));
-  console.log('usersInCurrentRoom', usersInCurrentRoom);
-
+  const usersInRoom = Array.from(
+    useSystemStore(selectUsersInRoom(currentRoom?.id || '')),
+  );
   const { handleInputChange: handleTyping, stopTyping } = useTypingDetection({
     roomId: currentRoom?.id || null,
   });
 
-  // Get typing indicators for current room
+  // Get users who are currently typing in this room
   const typingUserIds = currentRoom ? (usersTypingByRoom[currentRoom.id] || []) : [];
-  const typingUsers = usersInCurrentRoom.filter(user => typingUserIds.includes(user.id));
-  const typingText = typingUsers.length > 0
-    ? typingUsers.length === 1
-      ? `${typingUsers[0].username} is typing...`
-      : typingUsers.length === 2
-        ? `${typingUsers[0].username} and ${typingUsers[1].username} are typing...`
-        : `${typingUsers[0].username}, ${typingUsers[1].username}, and ${typingUsers.length - 2} other${typingUsers.length - 2 > 1 ? 's' : ''} are typing...`
-    : '';
+  const typingUsers = usersInRoom.filter(user => typingUserIds.includes(user.id));
 
   useEffect(() => {
     if (!currentRoom) {
@@ -69,7 +60,7 @@ function ChatContainer() {
 
         <div className="chat-messages">
           {messages.map((msg) => {
-            const user = usersInCurrentRoom.find(u => u.id === msg.userId);
+            const user = usersInRoom.find(u => u.id === msg.userId);
             const username = user?.username || 'Unknown User';
             return (
               <div key={msg.id} className="chat-message">
@@ -79,11 +70,7 @@ function ChatContainer() {
           })}
         </div>
 
-        {typingText && (
-          <div className="typing-indicator" style={{ padding: '8px', fontStyle: 'italic', color: '#666' }}>
-            {typingText}
-          </div>
-        )}
+        <TypingIndicators users={typingUsers} />
 
         <div className="chat-input">
           <input
@@ -117,7 +104,7 @@ function ChatContainer() {
 
         <h4>Users</h4>
         <ul>
-          {usersInCurrentRoom.map((user) => (
+          {usersInRoom.map((user) => (
             <li key={user.id}>{user.username}</li>
           ))}
         </ul>

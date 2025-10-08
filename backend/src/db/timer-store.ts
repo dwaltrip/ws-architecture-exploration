@@ -4,7 +4,6 @@ interface TimerState {
   status: TimerStatus;
   totalDurationSeconds: number;
   remainingSeconds: number;
-  startedAt: number | null;
 }
 
 type TimerStore = {
@@ -22,7 +21,6 @@ function createTimerStore(): TimerStore {
     status: 'idle',
     totalDurationSeconds: 0,
     remainingSeconds: 0,
-    startedAt: null,
   };
 
   return {

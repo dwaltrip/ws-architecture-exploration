@@ -33,7 +33,6 @@ const timerActions: TimerActions = {
       status: payload.status,
       remainingSeconds: payload.remainingSeconds,
       totalDurationSeconds: payload.totalDurationSeconds,
-      startedAt: payload.startedAt,
     });
   },
 };

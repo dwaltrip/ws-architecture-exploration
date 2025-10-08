@@ -8,7 +8,6 @@ export type TimerStateChangedPayload = {
   status: TimerStatus;
   remainingSeconds: number;
   totalDurationSeconds: number;
-  startedAt: number | null; // timestamp when timer started/resumed
 };
 
 export type TimerServerPayloadMap = {

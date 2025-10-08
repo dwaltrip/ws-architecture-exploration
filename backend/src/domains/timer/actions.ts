@@ -20,7 +20,6 @@ export const timerActions = {
       status: 'running',
       totalDurationSeconds: payload.durationSeconds,
       remainingSeconds: payload.durationSeconds,
-      startedAt: Date.now(),
     };
     timerStore.set(payload.roomId, state);
 
@@ -38,7 +37,7 @@ export const timerActions = {
 
     let hasChanges = false;
     timerStore.getAll().forEach(([roomId, timer]) => {
-      if (timer.status !== 'running' || !timer.startedAt) {
+      if (timer.status !== 'running') {
         return;
       }
       timer.remainingSeconds = Math.max(0, timer.remainingSeconds - 1);
@@ -81,7 +80,6 @@ export const timerActions = {
     const state: TimerState = {
       ...current,
       status: 'running',
-      startedAt: Date.now(),
     };
     timerStore.set(payload.roomId, state);
 
@@ -98,7 +96,6 @@ export const timerActions = {
       status: 'idle',
       totalDurationSeconds: 0,
       remainingSeconds: 0,
-      startedAt: null,
     };
     timerStore.set(payload.roomId, state);
 
