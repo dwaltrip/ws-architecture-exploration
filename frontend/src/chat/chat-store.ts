@@ -1,21 +1,19 @@
 import { create } from 'zustand';
 
-import type { ChatMessage, ChatRoom, UserId } from '../../../common/src/types/db';
+import type { ChatMessage, ChatRoom, ChatRoomId, UserId } from '../../../common/src/types/db';
 
 interface ChatState {
   messages: ChatMessage[];
   currentRoom: ChatRoom | null;
   availableRooms: ChatRoom[];
-  usersTypingByRoom: Record<string, UserId[]>; // roomId -> userId[]
+  usersTypingByRoom: Record<ChatRoomId, UserId[]>;
 
   addMessage: (message: ChatMessage) => void;
   setCurrentRoom: (room: ChatRoom) => void;
   setAvailableRooms: (rooms: ChatRoom[]) => void;
-  // updateUserTypingStatus: (userId: UserId, isTyping: boolean) => void;
-  setUsersTypingInRoom: (roomId: string, userIds: string[]) => void;
+  setUsersTypingInRoom: (roomId: ChatRoomId, userIds: UserId[]) => void;
 }
 
-// const useChatStore = create<ChatState>((set, get) => ({
 const useChatStore = create<ChatState>((set) => ({
   messages: [],
   currentRoom: null,
