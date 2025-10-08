@@ -9,7 +9,7 @@ type ChatStore = {
   reset(): void;
 };
 
-export function createChatStore(): ChatStore {
+function createChatStore(): ChatStore {
   const messages = new Map<string, ChatMessageBroadcastPayload>();
   const typingByRoom = new Map<string, Set<string>>();
 
@@ -47,3 +47,7 @@ export function createChatStore(): ChatStore {
     },
   };
 }
+
+const chatStore = createChatStore();
+
+export { chatStore };

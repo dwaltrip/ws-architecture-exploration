@@ -1,1 +1,0 @@
-export { gameHandlers } from './handlers';

@@ -1,7 +1,7 @@
 import { GRID_SIZE, MAX_SPAWN_ATTEMPTS } from '../../../../common/src/game/constants';
 import type { GameMovePayload } from '../../../../common/src';
 
-import { gameStore } from './store-singleton';
+import { gameStore } from '../../db/game-store';
 import { wsBridge } from '../../ws/bridge';
 import { getUserColor } from '../../utils/user-color';
 

@@ -5,8 +5,9 @@ import type {
   TimerResumePayload,
   TimerStateChangedPayload,
 } from '../../../../common/src';
-import { timerStore } from './store-singleton';
+
 import { wsBridge } from '../../ws/bridge';
+import { timerStore } from '../../db/timer-store';
 import type { TimerState } from '../../db/timer-store';
 
 type UserContext = { userId: string; };

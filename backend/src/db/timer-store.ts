@@ -1,6 +1,6 @@
 import type { TimerStatus } from '../../../common/src';
 
-export interface TimerState {
+interface TimerState {
   status: TimerStatus;
   totalDurationSeconds: number;
   remainingSeconds: number;
@@ -15,7 +15,7 @@ type TimerStore = {
   reset(): void;
 };
 
-export function createTimerStore(): TimerStore {
+function createTimerStore(): TimerStore {
   const timers = new Map<string, TimerState>();
 
   const defaultState: TimerState = {
@@ -43,3 +43,8 @@ export function createTimerStore(): TimerStore {
     },
   };
 }
+
+const timerStore = createTimerStore();
+
+export type { TimerState };
+export { timerStore };

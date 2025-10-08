@@ -4,8 +4,8 @@ import type {
   ChatTypingBroadcastPayload,
   ChatTypingStatePayload,
 } from '../../../../common/src';
-import { chatStore } from './store-singleton';
-import * as userStore from '../../db/user-store.js';
+import { chatStore } from '../../db/chat-store';
+import * as userStore from '../../db/user-store';
 import { chatWsEffects } from './ws-effects';
 
 type UserContext = { userId: string };

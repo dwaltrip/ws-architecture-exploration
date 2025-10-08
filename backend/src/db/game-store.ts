@@ -1,4 +1,4 @@
-export interface GamePlayer {
+interface GamePlayer {
   userId: string;
   username: string;
   x: number;
@@ -16,7 +16,7 @@ type GameStore = {
   reset(): void;
 };
 
-export function createGameStore(): GameStore {
+function createGameStore(): GameStore {
   const players = new Map<string, GamePlayer>();
 
   return {
@@ -43,3 +43,8 @@ export function createGameStore(): GameStore {
     },
   };
 }
+
+const gameStore = createGameStore();
+
+export type { GamePlayer };
+export { gameStore };

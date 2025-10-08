@@ -1,10 +1,12 @@
 import type { ClientMessage, ServerMessage } from '../../common/src';
 import type { HandlerMapWithCtx } from '../../common/src/utils/message-helpers';
 import type { HandlerContext } from './ws/types';
-import { chatHandlers } from './domains/chat';
-import { systemHandlers } from './domains/system';
-import { timerHandlers } from './domains/timer';
-import { gameHandlers } from './domains/game';
+
+import { chatHandlers } from './domains/chat/handlers';
+import { systemHandlers } from './domains/system/handlers';
+import { timerHandlers } from './domains/timer/handlers';
+import { gameHandlers } from './domains/game/handlers';
+
 import { createWSServer } from './ws';
 import { wsBridge } from './ws/bridge';
 import { initTimerTick } from './domains/timer/init';
