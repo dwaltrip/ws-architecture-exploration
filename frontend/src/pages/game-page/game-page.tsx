@@ -4,6 +4,7 @@ import { GRID_SIZE } from '../../../../common/src/game/constants';
 import { useGameStore } from '../../game/game-store';
 import { useGameActions } from '../../game/actions';
 import { useUserStore } from '../../stores/user-store';
+import { useArrowKeyMovement } from './use-arrow-key-movement';
 
 export function GamePage() {
   const players = useGameStore((state) => state.players);
@@ -20,39 +21,12 @@ export function GamePage() {
     };
   }, [gameActions]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!currentPlayer) return;
 
-      const { x, y } = currentPlayer;
-      let newX = x;
-      let newY = y;
-
-      switch (event.key) {
-        case 'ArrowUp':
-          newY = Math.max(0, y - 1);
-          break;
-        case 'ArrowDown':
-          newY = Math.min(GRID_SIZE - 1, y + 1);
-          break;
-        case 'ArrowLeft':
-          newX = Math.max(0, x - 1);
-          break;
-        case 'ArrowRight':
-          newX = Math.min(GRID_SIZE - 1, x + 1);
-          break;
-        default:
-          return;
-      }
-
-      if (newX !== x || newY !== y) {
-        gameActions.movePlayer(newX, newY);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPlayer, gameActions]);
+  useArrowKeyMovement(
+    currentPlayer?.x ?? null,
+    currentPlayer?.y ?? null,
+    gameActions.movePlayer,
+  );
 
   return (
     <div style={{ padding: '2rem' }}>
