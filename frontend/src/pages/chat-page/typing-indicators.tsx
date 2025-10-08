@@ -1,4 +1,4 @@
-import type { User } from "../../../../common/src";
+import type { User } from "../../../../common/src/types/db";
 
 interface TypingIndicatorsProps {
   users: User[]

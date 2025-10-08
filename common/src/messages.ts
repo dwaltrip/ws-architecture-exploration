@@ -1,12 +1,16 @@
 import type { MessageUnion } from './utils/message-helpers';
+
 import type {
   ChatClientMessage,
   ChatClientMessageType,
   ChatClientPayloadMap,
+} from './chat/client-messages'
+import type {
   ChatServerMessage,
   ChatServerMessageType,
   ChatServerPayloadMap,
-} from './chat';
+} from './chat/server-messages';
+
 import type {
   SystemClientMessage,
   SystemClientMessageType,
@@ -15,7 +19,9 @@ import type {
 import type {
   SystemServerPayloadMap,
   SystemServerMessageType,
+  SystemServerMessage,
 } from '../src/system/server-messages';
+
 import type {
   TimerClientMessage,
   TimerClientMessageType,
@@ -26,6 +32,7 @@ import type {
   TimerServerMessageType,
   TimerServerPayloadMap,
 } from './timer/server-messages';
+
 import type {
   GameClientMessage,
   GameClientMessageType,
@@ -36,6 +43,8 @@ import type {
   GameServerMessageType,
   GameServerPayloadMap,
 } from './game/server-messages';
+
+// ----------------------------------------------------------------------------
 
 export type ClientMessageMap =
   & ChatClientPayloadMap
@@ -64,10 +73,14 @@ export type ServerMessageType =
   | TimerServerMessageType
   | GameServerMessageType;
 
-export type DomainClientMessage = ChatClientMessage | TimerClientMessage | GameClientMessage;
-export type DomainServerMessage = ChatServerMessage | TimerServerMessage | GameServerMessage;
+export type DomainClientMessage =
+  | SystemClientMessage
+  | ChatClientMessage
+  | TimerClientMessage
+  | GameClientMessage;
 
-export type { ChatClientMessage, ChatServerMessage };
-export type { SystemClientMessage };
-export type { TimerClientMessage, TimerServerMessage };
-export type { GameClientMessage, GameServerMessage };
+export type DomainServerMessage =
+  | SystemServerMessage
+  | ChatServerMessage
+  | TimerServerMessage
+  | GameServerMessage;
