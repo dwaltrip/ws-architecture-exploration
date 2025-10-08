@@ -1,0 +1,41 @@
+.game-page {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.game-board {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-size), 30px);
+  grid-template-rows: repeat(var(--grid-size), 30px);
+  gap: 1px;
+  background-color: #ccc;
+  padding: 1px;
+  margin-top: 1rem;
+}
+
+.game-tile {
+  background-color: #fff;
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.player-marker {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--player-color);
+  top: 3px;
+  left: 3px;
+}
+
+.player-marker.current-player {
+  border: 2px solid black;
+}
+
+.game-stats {
+  margin-left: 40px;
+}

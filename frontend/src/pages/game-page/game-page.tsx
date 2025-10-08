@@ -1,26 +1,101 @@
 import { useEffect } from 'react';
 
 import { GRID_SIZE } from '../../../../common/src/game/constants';
+import type { GamePlayer } from '../../../../common/src';
+
 import { useGameStore } from '../../game/game-store';
 import { useGameActions } from '../../game/actions';
 import { useUserStore } from '../../stores/user-store';
 import { useArrowKeyMovement } from './use-arrow-key-movement';
 
-export function GamePage() {
+import './game-page.css';
+
+interface GameTileProps {
+  // x: number;
+  // y: number;
+  playersOnTile: GamePlayer[];
+  currentUserId: string | null;
+}
+
+function GameTile({ playersOnTile, currentUserId }: GameTileProps) {
+  return (
+    <div className="game-tile">
+      {playersOnTile.map((player) => {
+        const isCurrentPlayer = player.userId === currentUserId;
+        return (
+          <div
+            key={player.userId}
+            title={player.username}
+            className={`player-marker ${isCurrentPlayer ? 'current-player' : ''}`}
+            style={{ '--player-color': player.color } as React.CSSProperties}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+interface GameBoardProps {
+  currentUserId: string | null;
+  getPlayerForPos: (x: number, y: number) => GamePlayer[];
+  size: number;
+}
+
+function GameBoard({
+  currentUserId,
+  getPlayerForPos,
+  size
+}: GameBoardProps) {
+  return (
+    <div
+      className="game-board"
+      style={{ '--grid-size': size } as React.CSSProperties}
+    >
+      {Array.from({ length: size * size }).map((_, index) => {
+        const x = index % size;
+        const y = Math.floor(index / size);
+        const players = getPlayerForPos(x, y);
+        return (
+          <GameTile
+            playersOnTile={players}
+            currentUserId={currentUserId}
+            key={index}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function posStr(x: number, y: number) {
+  return `${x},${y}`;
+}
+
+function buildPlayersByPos(players: GamePlayer[]) {
+  return players.reduce((memo, player) => {
+    const { x, y } = player;
+    const pos = posStr(x, y);
+    if (!memo[pos]) {
+      memo[pos] = [];
+    }
+    memo[pos].push(player);
+    return memo;
+  }, {} as Record<string, GamePlayer[]>);
+}
+
+
+function GamePage() {
   const players = useGameStore((state) => state.players);
   const currentUserId = useUserStore((state) => state.userId);
   const gameActions = useGameActions();
 
   const currentPlayer = players.find((p) => p.userId === currentUserId);
+  const playersByPos = buildPlayersByPos(players);
 
   useEffect(() => {
     gameActions.joinGame();
-
-    return () => {
-      gameActions.leaveGame();
-    };
+    return () => gameActions.leaveGame();
   }, [gameActions]);
-
 
   useArrowKeyMovement(
     currentPlayer?.x ?? null,
@@ -29,62 +104,18 @@ export function GamePage() {
   );
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Game Grid</h1>
-      <p>Use arrow keys to move your player (highlighted)</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${GRID_SIZE}, 30px)`,
-          gridTemplateRows: `repeat(${GRID_SIZE}, 30px)`,
-          gap: '1px',
-          backgroundColor: '#ccc',
-          padding: '1px',
-          marginTop: '1rem',
-        }}
-      >
-        {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, index) => {
-          const x = index % GRID_SIZE;
-          const y = Math.floor(index / GRID_SIZE);
-
-          const playersAtPosition = players.filter((p) => p.x === x && p.y === y);
-
-          return (
-            <div
-              key={index}
-              style={{
-                backgroundColor: '#fff',
-                position: 'relative',
-                width: '30px',
-                height: '30px',
-              }}
-            >
-              {playersAtPosition.map((player) => {
-                const isCurrentPlayer = player.userId === currentUserId;
-                return (
-                  <div
-                    key={player.userId}
-                    title={player.username}
-                    style={{
-                      position: 'absolute',
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      backgroundColor: player.color,
-                      top: '3px',
-                      left: '3px',
-                      border: isCurrentPlayer ? '2px solid black' : 'none',
-                    }}
-                  />
-                );
-              })}
-            </div>
-          );
-        })}
+    <div className="game-page">
+      <div>
+        <b>Game Grid</b> -- Use arrow keys to move
+        <span className="game-stats">Players online: {players.length}</span>
       </div>
-      <div style={{ marginTop: '1rem' }}>
-        <p>Players online: {players.length}</p>
-      </div>
+      <GameBoard
+        getPlayerForPos={(x, y) => playersByPos[posStr(x, y)] || []}
+        currentUserId={currentUserId}
+        size={GRID_SIZE}
+      />
     </div>
   );
 }
+
+export { GamePage };
