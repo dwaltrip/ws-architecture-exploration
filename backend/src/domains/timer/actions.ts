@@ -6,16 +6,11 @@ import type {
   TimerStateChangedPayload,
 } from '../../../../common/src';
 
-import { wsBridge } from '../../ws/bridge';
 import { timerStore } from '../../db/timer-store';
 import type { TimerState } from '../../db/timer-store';
+import { timerWsEffects } from './ws-effects';
 
 type UserContext = { userId: string; };
-
-const stateChangMsg = (payload: TimerStateChangedPayload) => ({
-  type: 'timer:state-changed' as const,
-  payload,
-});
 
 export const timerActions = {
   startTimer(payload: TimerStartPayload, ctx?: UserContext) {
@@ -33,7 +28,7 @@ export const timerActions = {
       roomId: payload.roomId,
       ...state,
     };
-    wsBridge.broadcastToRoom(payload.roomId, stateChangMsg(statePayload));
+    timerWsEffects.broadcastStateChange(payload.roomId, statePayload);
   },
 
   tickTimers() {
@@ -50,7 +45,7 @@ export const timerActions = {
       if (timer.remainingSeconds === 0) {
         timer.status = 'idle';
       }
-      wsBridge.broadcastToRoom(roomId, stateChangMsg({ roomId, ...timer}));
+      timerWsEffects.broadcastStateChange(roomId, { roomId, ...timer });
       hasChanges = true;
     });
   },
@@ -69,9 +64,9 @@ export const timerActions = {
     };
     timerStore.set(payload.roomId, state);
 
-    wsBridge.broadcastToRoom(
+    timerWsEffects.broadcastStateChange(
       payload.roomId,
-      stateChangMsg({ roomId: payload.roomId, ...state }),
+      { roomId: payload.roomId, ...state },
     );
   },
 
@@ -90,10 +85,10 @@ export const timerActions = {
     };
     timerStore.set(payload.roomId, state);
 
-    wsBridge.broadcastToRoom(
-      payload.roomId, 
-      stateChangMsg({ roomId: payload.roomId, ...state }),
-    );
+    timerWsEffects.broadcastStateChange(
+      payload.roomId,
+      { roomId: payload.roomId, ...state },
+    )
   },
 
   resetTimer(payload: TimerResetPayload, ctx?: UserContext) {
@@ -107,9 +102,9 @@ export const timerActions = {
     };
     timerStore.set(payload.roomId, state);
 
-    wsBridge.broadcastToRoom(
-      payload.roomId, 
-      stateChangMsg({ roomId: payload.roomId, ...state }),
+    timerWsEffects.broadcastStateChange(
+      payload.roomId,
+      { roomId: payload.roomId, ...state },
     );
   },
 };
