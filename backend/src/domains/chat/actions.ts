@@ -5,38 +5,32 @@ import type {
   ChatTypingStatePayload,
 } from '../../../../common/src';
 import { chatStore } from './store-singleton';
-import { wsBridge } from '../../ws/bridge';
 import * as userStore from '../../db/user-store.js';
+import { chatWsEffects } from './ws-effects';
 
 type UserContext = { userId: string };
 
 export const chatActions = {
-  sendMessage(payload: ChatSendPayload, ctx?: UserContext): ChatMessageBroadcastPayload {
+  sendMessage(payload: ChatSendPayload, ctx: UserContext) {
     console.log('[chatActions] sendMessage', { payload, ctx });
 
-    const user = ctx?.userId ? userStore.getUser(ctx.userId) : undefined;
+    const user = userStore.getUser(ctx.userId);
     const text = payload.text.trim() || 'Message text missing';
     const message: ChatMessageBroadcastPayload = {
       id: `msg-${Date.now()}`,
       roomId: payload.roomId,
       text,
-      userId: ctx?.userId ?? 'unknown-user',
+      userId: ctx.userId || 'unknown-user',
       username: user?.username ?? 'anonymous-user',
       timestamp: Date.now(),
     };
 
     chatStore.save(message);
-    wsBridge.broadcastToRoom(message.roomId, {
-      type: 'chat:message',
-      payload: message,
-    });
-    return message;
+    chatWsEffects.broadcastNewMessage(message);
   },
 
-  setTypingState(payload: ChatTypingStatePayload, ctx?: UserContext): ChatTypingBroadcastPayload {
-    if (ctx?.userId) {
-      chatStore.setTyping(payload.roomId, ctx.userId, payload.isTyping);
-    }
+  setTypingState(payload: ChatTypingStatePayload, ctx: UserContext) {
+    chatStore.setTyping(payload.roomId, ctx.userId, payload.isTyping);
 
     const typingUsers = chatStore.getTyping(payload.roomId);
     const typingBroadcast: ChatTypingBroadcastPayload = {
@@ -44,13 +38,9 @@ export const chatActions = {
       userIds: Array.from(typingUsers),
     };
 
-    const opts = ctx?.userId ? { excludeUserId: ctx.userId } : undefined;
-    wsBridge.broadcastToRoom(
-      payload.roomId,
-      { type: 'chat:is-typing-in-room', payload: typingBroadcast },
-      opts,
+    chatWsEffects.broadcastTypingState(
+      typingBroadcast,
+      ctx.userId
     );
-
-    return typingBroadcast;
   },
 };
