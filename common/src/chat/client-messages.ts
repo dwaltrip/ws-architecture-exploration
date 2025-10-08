@@ -15,8 +15,6 @@ export type ChatClientPayloadMap = {
   'chat:typing': ChatTypingStatePayload;
 };
 
-export const chatClientMessageTypes = ['chat:send', 'chat:typing'] as const;
-
 export type ChatClientMessageType = keyof ChatClientPayloadMap;
 
 export type ChatClientMessage = MessageUnion<ChatClientPayloadMap>;

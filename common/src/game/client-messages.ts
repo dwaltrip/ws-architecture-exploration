@@ -15,12 +15,6 @@ export type GameClientPayloadMap = {
   'game:leave': GameLeavePayload;
 };
 
-export const gameClientMessageTypes = [
-  'game:join',
-  'game:move',
-  'game:leave',
-] as const;
-
 export type GameClientMessageType = keyof GameClientPayloadMap;
 
 export type GameClientMessage = MessageUnion<GameClientPayloadMap>;

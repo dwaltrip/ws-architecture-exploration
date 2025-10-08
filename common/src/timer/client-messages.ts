@@ -24,13 +24,6 @@ export type TimerClientPayloadMap = {
   'timer:resume': TimerResumePayload;
 };
 
-export const timerClientMessageTypes = [
-  'timer:start',
-  'timer:pause',
-  'timer:reset',
-  'timer:resume',
-] as const;
-
 export type TimerClientMessageType = keyof TimerClientPayloadMap;
 
 export type TimerClientMessage = MessageUnion<TimerClientPayloadMap>;

@@ -13,11 +13,6 @@ export type SystemClientPayloadMap = {
   'system:room-leave': SystemRoomLeavePayload;
 };
 
-export const systemClientMessageTypes = [
-  'system:room-join',
-  'system:room-leave',
-] as const;
-
 export type SystemClientMessageType = keyof SystemClientPayloadMap;
 
 export type SystemClientMessage = MessageUnion<SystemClientPayloadMap>;
