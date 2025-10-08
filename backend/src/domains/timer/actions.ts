@@ -5,15 +5,19 @@ import type {
   TimerResumePayload,
   TimerStateChangedPayload,
 } from '../../../../common/src';
-import { TimerMessageBuilders } from './message-builders';
 import { timerStore } from './store-singleton';
 import { wsBridge } from '../../ws/bridge';
 import type { TimerState } from '../../db/timer-store';
 
 type UserContext = { userId: string; };
 
+const stateChangMsg = (payload: TimerStateChangedPayload) => ({
+  type: 'timer:state-changed' as const,
+  payload,
+});
+
 export const timerActions = {
-  startTimer(payload: TimerStartPayload, ctx?: UserContext): TimerStateChangedPayload {
+  startTimer(payload: TimerStartPayload, ctx?: UserContext) {
     console.log('[timerActions] startTimer', { payload, ctx });
 
     const state: TimerState = {
@@ -22,20 +26,13 @@ export const timerActions = {
       remainingSeconds: payload.durationSeconds,
       startedAt: Date.now(),
     };
-
     timerStore.set(payload.roomId, state);
 
     const statePayload: TimerStateChangedPayload = {
       roomId: payload.roomId,
-      status: state.status,
-      remainingSeconds: state.remainingSeconds,
-      totalDurationSeconds: state.totalDurationSeconds,
-      startedAt: state.startedAt,
+      ...state,
     };
-
-    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
-
-    return statePayload;
+    wsBridge.broadcastToRoom(payload.roomId, stateChangMsg(statePayload));
   },
 
   tickTimers() {
@@ -52,69 +49,37 @@ export const timerActions = {
       if (timer.remainingSeconds === 0) {
         timer.status = 'idle';
       }
-      wsBridge.broadcastToRoom(
-        roomId,
-        TimerMessageBuilders.stateChanged({ roomId, ...timer }),
-      );
+      wsBridge.broadcastToRoom(roomId, stateChangMsg({ roomId, ...timer}));
       hasChanges = true;
     });
   },
 
-  pauseTimer(payload: TimerPausePayload, ctx?: UserContext): TimerStateChangedPayload {
+  pauseTimer(payload: TimerPausePayload, ctx?: UserContext) {
     console.log('[timerActions] pauseTimer', { payload, ctx });
 
     const current = timerStore.get(payload.roomId);
-
     if (current.status !== 'running') {
-      const statePayload: TimerStateChangedPayload = {
-        roomId: payload.roomId,
-        status: current.status,
-        remainingSeconds: current.remainingSeconds,
-        totalDurationSeconds: current.totalDurationSeconds,
-        startedAt: current.startedAt,
-      };
-      return statePayload;
+      return;
     }
-
-    const elapsed = current.startedAt ? (Date.now() - current.startedAt) / 1000 : 0;
-    const remaining = Math.max(0, current.remainingSeconds - elapsed);
 
     const state: TimerState = {
       ...current,
       status: 'paused',
-      remainingSeconds: remaining,
-      startedAt: null,
     };
-
     timerStore.set(payload.roomId, state);
 
-    const statePayload: TimerStateChangedPayload = {
-      roomId: payload.roomId,
-      status: state.status,
-      remainingSeconds: state.remainingSeconds,
-      totalDurationSeconds: state.totalDurationSeconds,
-      startedAt: state.startedAt,
-    };
-
-    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
-
-    return statePayload;
+    wsBridge.broadcastToRoom(
+      payload.roomId,
+      stateChangMsg({ roomId: payload.roomId, ...state }),
+    );
   },
 
-  resumeTimer(payload: TimerResumePayload, ctx?: UserContext): TimerStateChangedPayload {
+  resumeTimer(payload: TimerResumePayload, ctx?: UserContext) {
     console.log('[timerActions] resumeTimer', { payload, ctx });
 
     const current = timerStore.get(payload.roomId);
-
     if (current.status !== 'paused') {
-      const statePayload: TimerStateChangedPayload = {
-        roomId: payload.roomId,
-        status: current.status,
-        remainingSeconds: current.remainingSeconds,
-        totalDurationSeconds: current.totalDurationSeconds,
-        startedAt: current.startedAt,
-      };
-      return statePayload;
+      return;
     }
 
     const state: TimerState = {
@@ -122,23 +87,15 @@ export const timerActions = {
       status: 'running',
       startedAt: Date.now(),
     };
-
     timerStore.set(payload.roomId, state);
 
-    const statePayload: TimerStateChangedPayload = {
-      roomId: payload.roomId,
-      status: state.status,
-      remainingSeconds: state.remainingSeconds,
-      totalDurationSeconds: state.totalDurationSeconds,
-      startedAt: state.startedAt,
-    };
-
-    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
-
-    return statePayload;
+    wsBridge.broadcastToRoom(
+      payload.roomId, 
+      stateChangMsg({ roomId: payload.roomId, ...state }),
+    );
   },
 
-  resetTimer(payload: TimerResetPayload, ctx?: UserContext): TimerStateChangedPayload {
+  resetTimer(payload: TimerResetPayload, ctx?: UserContext) {
     console.log('[timerActions] resetTimer', { payload, ctx });
 
     const state: TimerState = {
@@ -147,19 +104,11 @@ export const timerActions = {
       remainingSeconds: 0,
       startedAt: null,
     };
-
     timerStore.set(payload.roomId, state);
 
-    const statePayload: TimerStateChangedPayload = {
-      roomId: payload.roomId,
-      status: state.status,
-      remainingSeconds: state.remainingSeconds,
-      totalDurationSeconds: state.totalDurationSeconds,
-      startedAt: state.startedAt,
-    };
-
-    wsBridge.broadcastToRoom(payload.roomId, TimerMessageBuilders.stateChanged(statePayload));
-
-    return statePayload;
+    wsBridge.broadcastToRoom(
+      payload.roomId, 
+      stateChangMsg({ roomId: payload.roomId, ...state }),
+    );
   },
 };
