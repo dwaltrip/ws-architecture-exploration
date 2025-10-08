@@ -5,11 +5,6 @@ export type ChatSendPayload = {
   roomId: string;
 };
 
-export type ChatEditPayload = {
-  messageId: string;
-  newText: string;
-};
-
 export type ChatTypingStatePayload = {
   roomId: string;
   isTyping: boolean;
@@ -17,11 +12,10 @@ export type ChatTypingStatePayload = {
 
 export type ChatClientPayloadMap = {
   'chat:send': ChatSendPayload;
-  'chat:edit': ChatEditPayload;
   'chat:typing': ChatTypingStatePayload;
 };
 
-export const chatClientMessageTypes = ['chat:send', 'chat:edit', 'chat:typing'] as const;
+export const chatClientMessageTypes = ['chat:send', 'chat:typing'] as const;
 
 export type ChatClientMessageType = keyof ChatClientPayloadMap;
 

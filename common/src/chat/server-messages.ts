@@ -9,12 +9,6 @@ export type ChatMessageBroadcastPayload = {
   timestamp: number;
 };
 
-export type ChatMessageEditedPayload = {
-  messageId: string;
-  newText: string;
-  editedBy: string;
-};
-
 export type ChatTypingBroadcastPayload = {
   roomId: string;
   userIds: string[];
@@ -22,7 +16,6 @@ export type ChatTypingBroadcastPayload = {
 
 export type ChatServerPayloadMap = {
   'chat:message': ChatMessageBroadcastPayload;
-  'chat:edited': ChatMessageEditedPayload;
   'chat:is-typing-in-room': ChatTypingBroadcastPayload;
 };
 

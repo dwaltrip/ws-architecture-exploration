@@ -13,10 +13,6 @@ export const chatHandlers = {
       userId,
     });
   },
-  'chat:edited': (_payload) => {
-    // const { messageId, newText } = payload;
-    // updateMessageWithEdits(messageId, newText);
-  },
   'chat:is-typing-in-room': (payload) => {
     const { roomId, userIds } = payload;
     const { setUsersTypingInRoom } = chatActions;

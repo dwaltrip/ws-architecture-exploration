@@ -7,9 +7,6 @@ export const chatHandlers = {
   'chat:send': (payload, ctx) => {
     chatActions.sendMessage(payload, { userId: ctx.userId });
   },
-  'chat:edit': (payload, ctx) => {
-    chatActions.editMessage(payload, { userId: ctx.userId });
-  },
   'chat:typing': (payload, ctx) => {
     chatActions.setTypingState(payload, { userId: ctx.userId });
   },

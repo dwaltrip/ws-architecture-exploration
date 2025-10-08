@@ -1,4 +1,3 @@
-import { createSendMessage, createTypingMessage } from './messages';
 import { createWsRef } from '../ws/create-ws-ref';
 
 interface ChatWsEffects {
@@ -10,11 +9,17 @@ const ws = createWsRef('Chat');
 
 const chatWsEffects: ChatWsEffects = {
   postNewMessage(roomId: string, text: string) {
-    ws.getClient().send(createSendMessage(text, roomId));
+    ws.getClient().send( {
+      type: 'chat:send',
+      payload: { text, roomId },
+    });
   },
 
   updateTypingStatus(roomId: string, isTyping: boolean) {
-    ws.getClient().send(createTypingMessage(roomId, isTyping));
+    ws.getClient().send( {
+      type: 'chat:typing',
+      payload: { roomId, isTyping },
+    });
   },
 };
 

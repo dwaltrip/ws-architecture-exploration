@@ -1,12 +1,9 @@
 import type {
-  ChatEditPayload,
   ChatMessageBroadcastPayload,
-  ChatMessageEditedPayload,
   ChatSendPayload,
   ChatTypingBroadcastPayload,
   ChatTypingStatePayload,
 } from '../../../../common/src';
-import { ChatMessageBuilders } from './message-builders';
 import { chatStore } from './store-singleton';
 import { wsBridge } from '../../ws/bridge';
 import * as userStore from '../../db/user-store.js';
@@ -29,40 +26,14 @@ export const chatActions = {
     };
 
     chatStore.save(message);
-    wsBridge.broadcastToRoom(message.roomId, ChatMessageBuilders.message(message));
+    wsBridge.broadcastToRoom(message.roomId, {
+      type: 'chat:message',
+      payload: message,
+    });
     return message;
   },
 
-  editMessage(payload: ChatEditPayload, ctx?: UserContext): ChatMessageEditedPayload & { roomId: string } {
-    console.log('[chatActions] editMessage', { payload, ctx });
-
-    const user = ctx?.userId ? userStore.getUser(ctx.userId) : undefined;
-    const existing = chatStore.find(payload.messageId);
-    const roomId = existing?.roomId ?? 'unknown-room';
-
-    if (existing) {
-      chatStore.update(payload.messageId, { text: payload.newText });
-    }
-
-    const editPayload = {
-      roomId,
-      messageId: payload.messageId,
-      newText: payload.newText,
-      editedBy: user?.username ?? 'anonymous-user',
-    };
-
-    wsBridge.broadcastToRoom(roomId, ChatMessageBuilders.edited({
-      messageId: editPayload.messageId,
-      newText: editPayload.newText,
-      editedBy: editPayload.editedBy,
-    }));
-
-    return editPayload;
-  },
-
   setTypingState(payload: ChatTypingStatePayload, ctx?: UserContext): ChatTypingBroadcastPayload {
-    console.log('[chatActions] setTypingState', { payload, ctx });
-
     if (ctx?.userId) {
       chatStore.setTyping(payload.roomId, ctx.userId, payload.isTyping);
     }
@@ -74,10 +45,9 @@ export const chatActions = {
     };
 
     const opts = ctx?.userId ? { excludeUserId: ctx.userId } : undefined;
-
     wsBridge.broadcastToRoom(
       payload.roomId,
-      ChatMessageBuilders.typing(typingBroadcast),
+      { type: 'chat:is-typing-in-room', payload: typingBroadcast },
       opts,
     );
 

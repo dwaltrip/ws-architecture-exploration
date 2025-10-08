@@ -1,7 +1,6 @@
 import { GRID_SIZE, MAX_SPAWN_ATTEMPTS } from '../../../../common/src/game/constants';
 import type { GameMovePayload } from '../../../../common/src';
 
-import { GameMessageBuilders } from './message-builders';
 import { gameStore } from './store-singleton';
 import { wsBridge } from '../../ws/bridge';
 import { getUserColor } from '../../utils/user-color';
@@ -18,12 +17,8 @@ export const gameActions = {
       return;
     }
 
-    // Generate deterministic color
     const color = getUserColor(userId, username);
-
-    // Try to find unoccupied position
     const position = findSpawnPosition();
-
     const player = {
       userId,
       username,
@@ -36,8 +31,6 @@ export const gameActions = {
   },
 
   movePlayer(payload: GameMovePayload, ctx: UserContext): void {
-    console.log('[gameActions] movePlayer', { payload, ctx });
-
     const player = gameStore.get(ctx.userId);
     if (!player) {
       console.warn('[gameActions] movePlayer: player not in game', ctx.userId);
@@ -50,7 +43,6 @@ export const gameActions = {
       return;
     }
 
-    // Update position
     player.x = payload.x;
     player.y = payload.y;
     gameStore.set(ctx.userId, player);
@@ -69,7 +61,10 @@ export const gameActions = {
 
   broadcastGameState(): void {
     const state = gameActions.getGameState();
-    wsBridge.broadcast(GameMessageBuilders.gameState(state));
+    wsBridge.broadcast( {
+      type: 'game:state',
+      payload: state,
+    });
   },
 };
 
