@@ -1,18 +1,11 @@
 import type { SystemRoomJoinPayload, SystemRoomLeavePayload } from '../../../../common/src';
 import { wsBridge } from '../../ws/bridge';
-import { SystemMessageBuilders } from './message-builders';
 import * as userStore from '../../db/user-store.js';
 import { generateUsername } from '../../utils/username-generator.js';
+import { systemWsEffects } from './ws-effects';
+import { normalizeRoomId } from './utils';
 
 type UserContext = { userId: string };
-
-function normalizeRoomId(roomId: unknown): string | null {
-  if (typeof roomId !== 'string') {
-    return null;
-  }
-  const trimmed = roomId.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
 
 export function createUser(): { userId: string; username: string } {
   const userId = userStore.generateUserId();
@@ -29,46 +22,32 @@ export function getUser(userId: string) {
   return userStore.getUser(userId);
 }
 
+function validateRoomId(roomId: unknown): string {
+  const normalizedRoomId = normalizeRoomId(roomId);
+  if (!normalizedRoomId) {
+    throw new Error('Room id must be a non-empty string.');
+  }
+  return normalizedRoomId;
+}
+
 export const systemActions = {
-  joinRoom(payload: SystemRoomJoinPayload, ctx?: UserContext): void {
-    console.log('[systemActions] joinRoom', { payload, ctx });
-
-    const normalizedRoomId = normalizeRoomId(payload.roomId);
-    if (!normalizedRoomId) {
-      throw new Error('Room id must be a non-empty string.');
-    }
-
-    if (!ctx?.userId) {
-      throw new Error('User context required for joinRoom');
-    }
-
-    console.log(`User ${ctx.userId} joining room ${normalizedRoomId}`);
+  joinRoom(payload: SystemRoomJoinPayload, ctx: UserContext): void {
+    const normalizedRoomId = validateRoomId(payload.roomId);
     wsBridge.rooms.join(normalizedRoomId, ctx.userId);
+    console.log(`[SystemActions] User ${ctx.userId} joined room ${normalizedRoomId}`);
 
     const members = wsBridge.rooms.getMembers(normalizedRoomId);
     const userIds = members ? Array.from(members) : [];
-
-    wsBridge.broadcastToRoom(normalizedRoomId, SystemMessageBuilders.usersForRoom({
-      roomId: normalizedRoomId,
-      users: userIds.map((id) => {
-        const user = userStore.getUser(id);
-        return { id, username: user?.username ?? 'Unknown User' };
-      }),
-    }));
+    const users = userIds.map((id) => {
+      const user = userStore.getUser(id);
+      return { id, username: user?.username ?? 'Unknown User' };
+    });
+    systemWsEffects.broadcastUsersForRoom(normalizedRoomId, users);
   },
 
-  leaveRoom(payload: SystemRoomLeavePayload, ctx?: UserContext): void {
-    console.log('[systemActions] leaveRoom', { payload, ctx });
-
-    const normalizedRoomId = normalizeRoomId(payload.roomId);
-    if (!normalizedRoomId) {
-      throw new Error('Room id must be a non-empty string.');
-    }
-
-    if (!ctx?.userId) {
-      throw new Error('User context required for leaveRoom');
-    }
-
+  leaveRoom(payload: SystemRoomLeavePayload, ctx: UserContext): void {
+    const normalizedRoomId = validateRoomId(payload.roomId);
     wsBridge.rooms.leave(normalizedRoomId, ctx.userId);
+    console.log(`[SystemActions] User ${ctx.userId} left room ${normalizedRoomId}`);
   },
 };

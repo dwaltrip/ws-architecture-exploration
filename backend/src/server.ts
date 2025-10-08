@@ -13,7 +13,7 @@ import { initTimerTick } from './domains/timer/init';
 import { initGameTick } from './domains/game/init';
 import { createUser, removeUser } from './domains/system/actions.js';
 import { gameActions } from './domains/game/actions';
-import { buildUserInfoMessage } from './domains/system/message-builders.js';
+import { buildUserInfoMessage } from './domains/system/message-builders';
 
 function startExampleServer(port = 3000) {
   const handlers = {
@@ -29,6 +29,7 @@ function startExampleServer(port = 3000) {
     onConnection: (socket) => {
       const user = createUser();
       console.log(`Client connected -- ${user.userId}`);
+      // TODO: Don't love us call `send` directly, this is the only place we do it.
       socket.send(JSON.stringify(buildUserInfoMessage(user.userId, user.username)));
       return user.userId;
     },
